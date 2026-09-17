@@ -1,0 +1,180 @@
+"""
+Nebius Token Factory API Client.
+Handles communication with Nebius OpenAI-compatible endpoints using NVIDIA Nemotron models.
+Ensures prompts are redacted for privacy before sending.
+"""
+
+import os
+import re
+import logging
+from typing import List, Dict, Iterator
+from dotenv import load_dotenv
+from openai import OpenAI
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+# Load environment variables
+load_dotenv()
+
+# Setup logging configuration
+log_level_str = os.getenv("LOG_LEVEL", "INFO").upper()
+log_level = getattr(logging, log_level_str, logging.INFO)
+if not logging.getLogger().handlers:
+    logging.basicConfig(
+        level=log_level,
+        format="%(asctime)s | %(name)s | %(levelname)s | %(message)s"
+    )
+logger = logging.getLogger("memora.nebius")
+
+
+class NebiusClient:
+    """Client for interacting with Nebius Token Factory APIs."""
+
+    def __init__(self) -> None:
+        """Initialize the OpenAI SDK with Nebius configuration."""
+        self.api_key = os.getenv("NEBIUS_API_KEY")
+        if not self.api_key:
+            logger.warning("NEBIUS_API_KEY is not set. API calls will fail.")
+
+        self.client = OpenAI(
+            base_url="https://api.tokenfactory.nebius.com/v1/",
+            api_key=self.api_key,
+        )
+
+        self.model_nano = os.getenv("MODEL_NANO", "nvidia/nemotron-3-nano-30b-a3b")
+        self.model_super = os.getenv("MODEL_SUPER", "nvidia/nemotron-3-super-120b-a12b")
+        self.model_ultra = os.getenv("MODEL_ULTRA", "nvidia/nemotron-3-ultra")
+        # Default embedding model if not specified in .env
+        self.model_embed = os.getenv("MODEL_EMBEDDING", "nvidia/nv-embedqa-e5-v5")
+
+    def _redact(self, text: str) -> str:
+        """
+        Redact PII from text before sending to Nebius.
+        Very basic regex-based version for now.
+        
+        Args:
+            text: The original text.
+            
+        Returns:
+            The redacted text.
+        """
+        # Phone numbers: basic pattern
+        text = re.sub(r'\+?\d{2,3}[\s-]?\d{3}[\s-]?\d{4,6}', '[PHONE]', text)
+        # Email addresses
+        text = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL]', text)
+        # Fiscal codes (Codice Fiscale)
+        text = re.sub(r'[A-Z]{6}\d{2}[A-Z]\d{2}[A-Z]\d{3}[A-Z]', '[CF REDACTED]', text, flags=re.IGNORECASE)
+        # Dates of birth (DD/MM/YYYY)
+        text = re.sub(r'\b(0[1-9]|[12][0-9]|3[01])[-/.](0[1-9]|1[012])[-/.](19|20)\d\d\b', '[DOB]', text)
+        
+        return text
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def chat(self, model: str, messages: List[Dict[str, str]], temperature: float = 0.7) -> str:
+        """
+        Send a chat completion request to the specified model.
+        
+        Args:
+            model: The model ID to use.
+            messages: List of message dictionaries.
+            temperature: Sampling temperature.
+            
+        Returns:
+            The text response from the model.
+        """
+        logger.info(f"Sending chat request to {model}")
+        redacted_messages = [
+            {**msg, "content": self._redact(msg["content"])} if "content" in msg else msg
+            for msg in messages
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=redacted_messages,
+            temperature=temperature
+        )
+        return response.choices[0].message.content or ""
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def chat_stream(self, model: str, messages: List[Dict[str, str]]) -> Iterator[str]:
+        """
+        Stream a chat completion response from the specified model.
+        
+        Args:
+            model: The model ID to use.
+            messages: List of message dictionaries.
+            
+        Yields:
+            Chunks of text from the stream.
+        """
+        logger.info(f"Starting chat stream from {model}")
+        redacted_messages = [
+            {**msg, "content": self._redact(msg["content"])} if "content" in msg else msg
+            for msg in messages
+        ]
+        
+        response = self.client.chat.completions.create(
+            model=model,
+            messages=redacted_messages,
+            stream=True
+        )
+        for chunk in response:
+            if chunk.choices and chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
+
+    def quick_intent(self, user_input: str) -> str:
+        """
+        Process a quick intent using the Nano model.
+        
+        Args:
+            user_input: The user's input text.
+            
+        Returns:
+            The intent analysis response.
+        """
+        messages = [{"role": "user", "content": user_input}]
+        return self.chat(model=self.model_nano, messages=messages)
+
+    def respond(self, user_input: str) -> str:
+        """
+        Generate a dialogue response using the Super model.
+        
+        Args:
+            user_input: The user's input text.
+            
+        Returns:
+            The generated dialogue response.
+        """
+        messages = [{"role": "user", "content": user_input}]
+        return self.chat(model=self.model_super, messages=messages)
+
+    def plan(self, task: str) -> str:
+        """
+        Create a complex plan using the Ultra model.
+        
+        Args:
+            task: The complex task to plan.
+            
+        Returns:
+            The detailed plan from the model.
+        """
+        messages = [{"role": "user", "content": task}]
+        return self.chat(model=self.model_ultra, messages=messages)
+
+    @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+    def embed(self, text: str) -> List[float]:
+        """
+        Generate an embedding for the given text.
+        
+        Args:
+            text: The text to embed.
+            
+        Returns:
+            The embedding vector.
+        """
+        logger.info("Generating embedding")
+        redacted_text = self._redact(text)
+        response = self.client.embeddings.create(
+            model=self.model_embed,
+            input=redacted_text
+        )
+        return response.data[0].embedding
