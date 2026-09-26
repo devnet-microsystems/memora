@@ -11,19 +11,23 @@ from typing import List, Dict, Any, Optional
 import networkx as nx
 import numpy as np
 
+logger = logging.getLogger("memora.memory")
+
 try:
-    from pysqlcipher3 import dbapi2 as sqlite3
-    has_sqlcipher = True
+    from sqlcipher3 import dbapi2 as sqlite
+    HAS_SQLCIPHER = True
+    logger.info("SQLCipher import: True")
 except ImportError:
-    import sqlite3
-    has_sqlcipher = False
+    import sqlite3 as sqlite
+    HAS_SQLCIPHER = False
+    logger.warning("SQLCipher not found, falling back to standard sqlite3.")
 
 from dotenv import load_dotenv
 from src.nebius_client import NebiusClient
 
 # Load environment variables
 load_dotenv()
-logger = logging.getLogger("memora.memory")
+
 
 class MemoryGraph:
     """Graph-based persistent memory for Memora."""
@@ -33,12 +37,12 @@ class MemoryGraph:
         Initialize the Memory Graph and SQLite persistence.
         """
         self.db_path = db_path or os.getenv("DB_PATH", "./data/memora.db")
+        self.db_path = os.path.abspath(self.db_path)
         self.db_key = db_key or os.getenv("DB_KEY", "")
         self.client = NebiusClient()
         self.graph = nx.DiGraph()
         
-        if not has_sqlcipher:
-            logger.warning("SQLCipher not found, falling back to standard sqlite3. Data will not be encrypted.")
+        # Logging moved to module level
             
         self._init_db()
         self._load_graph()
@@ -46,9 +50,11 @@ class MemoryGraph:
     def _get_connection(self):
         """Get a configured SQLite/SQLCipher connection."""
         os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
-        conn = sqlite3.connect(self.db_path)
-        if has_sqlcipher and self.db_key:
+        conn = sqlite.connect(self.db_path)
+        if HAS_SQLCIPHER and self.db_key:
             conn.execute(f"PRAGMA key='{self.db_key}'")
+            conn.execute("PRAGMA cipher_page_size = 4096")
+            conn.execute("PRAGMA kdf_iter = 64000")
         return conn
 
     def _init_db(self) -> None:
@@ -107,6 +113,7 @@ class MemoryGraph:
             type: Node type (e.g., person, place, event, habit, med).
             content: Raw text content of the memory.
         """
+        logger.info(f"add_node: id={node_id}, type={type}, content={content[:50]}")
         timestamp = time.time()
         embedding = self.client.embed(content)
         
@@ -126,7 +133,13 @@ class MemoryGraph:
                 VALUES (?, ?, ?, ?, ?)
             ''', (node_id, type, content, timestamp, emb_json))
             conn.commit()
-        logger.info(f"Added/updated node {node_id} of type {type}")
+            
+        logger.info(f"add_node: nodo aggiunto, totale nodi={self.graph.number_of_nodes()}")
+        logger.info(f"DB salvato in {self.db_path}")
+        try:
+            logger.info(f"Dimensione DB attuale: {os.path.getsize(self.db_path)} bytes")
+        except OSError:
+            logger.warning(f"Impossibile leggere dimensione DB in {self.db_path}")
 
     def add_edge(self, source: str, target: str, relation: str) -> None:
         """
@@ -229,6 +242,7 @@ class MemoryGraph:
         """
         Export the graph structure for dashboard visualization.
         """
+        logger.info(f"export_graph: {self.graph.number_of_nodes()} nodi, {self.graph.number_of_edges()} edges")
         nodes = []
         for n, data in self.graph.nodes(data=True):
             nodes.append({
