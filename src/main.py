@@ -48,10 +48,14 @@ app.add_middleware(
 # Global agent instance
 agent: MemoraAgent = None
 
+import sys
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize agent and dependencies on startup."""
     global agent
+    logger.info(f"Python: {sys.executable}")
+    logger.info(f"sys.path: {sys.path[:3]}")
     logger.info("Initializing Memora Agent and dependencies...")
     agent = MemoraAgent()
     logger.info("Initialization complete.")
@@ -76,6 +80,16 @@ async def chat(request: ChatRequest):
         logger.error(f"Chat error: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
+class MemoryNodeRequest(BaseModel):
+    id: str
+    type: str
+    content: str
+
+class MemoryEdgeRequest(BaseModel):
+    source: str
+    target: str
+    relation: str
+
 @app.get("/memory")
 async def get_memory() -> Dict[str, Any]:
     """
@@ -85,6 +99,33 @@ async def get_memory() -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail="Agent not initialized")
     return agent.memory.export_graph()
 
+@app.post("/memory")
+async def add_memory(request: MemoryNodeRequest):
+    """
+    Add a new memory node to the graph.
+    """
+    if not agent:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
+    try:
+        agent.memory_add(request.id, request.type, request.content)
+        return {"status": "success", "id": request.id}
+    except Exception as e:
+        logger.error(f"Failed to add memory: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/memory/edge")
+async def add_memory_edge(request: MemoryEdgeRequest):
+    """
+    Add a new edge between memory nodes.
+    """
+    if not agent:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
+    try:
+        agent.memory.add_edge(request.source, request.target, request.relation)
+        return {"status": "success"}
+    except Exception as e:
+        logger.error(f"Failed to add edge: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 @app.delete("/memory/{node_id}")
 async def delete_memory(node_id: str):
     """
@@ -109,10 +150,22 @@ async def generate_report():
         raise HTTPException(status_code=500, detail="Agent not initialized")
         
     try:
+        graph_data = agent.memory.export_graph()
+        nodes = graph_data.get("nodes", [])
+        
+        if not nodes:
+            memory_text = "Nessun ricordo registrato."
+        else:
+            memory_text = "\n".join([f"- [{n.get('group', 'unknown')}] {n.get('label', '')}" for n in nodes])
+            
         prompt = (
             "Genera un report settimanale sintetico sullo stato cognitivo e "
-            "comportamentale dell'utente basandoti sugli eventi più rilevanti in memoria. "
-            "Mantieni un tono professionale da caregiver."
+            "comportamentale dell'utente basandoti *esclusivamente* sui seguenti ricordi estratti dalla memoria.\n"
+            "Non inventare dati. Se mancano informazioni, dillo esplicitamente.\n"
+            "Non dire 'non ho accesso alla memoria' perché ti sto passando il contesto qui sotto.\n"
+            "Mantieni un tono professionale da caregiver.\n\n"
+            "RICORDI IN MEMORIA:\n"
+            f"{memory_text}"
         )
         messages = [{"role": "user", "content": prompt}]
         report_text = agent.nebius.chat(model=agent.nebius.model_ultra, messages=messages)

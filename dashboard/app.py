@@ -42,6 +42,17 @@ def delete_memory(node_id):
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 500
 
+from flask import request
+@app.route("/api/chat", methods=["POST"])
+def chat():
+    """Proxy for chat endpoint."""
+    try:
+        data = request.json
+        resp = requests.post(f"{API_URL}/chat", json=data, timeout=30)
+        return jsonify(resp.json()), resp.status_code
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.route("/api/report", methods=["POST"])
 def generate_report():
     """Proxy for generating a report."""
@@ -52,4 +63,4 @@ def generate_report():
         return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5001, debug=True)

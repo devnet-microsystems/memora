@@ -40,11 +40,19 @@ class NebiusClient:
             api_key=self.api_key,
         )
 
-        self.model_nano = os.getenv("MODEL_NANO", "nvidia/nemotron-3-nano-30b-a3b")
+        self.model_nano = os.getenv("MODEL_NANO", "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B")
         self.model_super = os.getenv("MODEL_SUPER", "nvidia/nemotron-3-super-120b-a12b")
-        self.model_ultra = os.getenv("MODEL_ULTRA", "nvidia/nemotron-3-ultra")
+        self.model_ultra = os.getenv("MODEL_ULTRA", "nvidia/Nemotron-3-Ultra-550b-a55b")
         # Default embedding model if not specified in .env
-        self.model_embed = os.getenv("MODEL_EMBEDDING", "nvidia/nv-embedqa-e5-v5")
+        self.model_embed = os.getenv("MODEL_EMBEDDING", "Qwen/Qwen3-Embedding-8B")
+        
+        # Track usage statistics for current session
+        self._usage = {
+            "calls": 0,
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "estimated_cost_usd": 0.0
+        }
 
     def _redact(self, text: str) -> str:
         """
@@ -92,6 +100,19 @@ class NebiusClient:
             messages=redacted_messages,
             temperature=temperature
         )
+        
+        # Track usage
+        self._usage["calls"] += 1
+        if hasattr(response, 'usage') and response.usage:
+            in_tok = response.usage.prompt_tokens
+            out_tok = response.usage.completion_tokens
+            self._usage["input_tokens"] += in_tok
+            self._usage["output_tokens"] += out_tok
+            # Rough estimation (e.g. $1 per 1M input tokens, $2 per 1M output tokens)
+            cost = (in_tok * 0.000001) + (out_tok * 0.000002)
+            self._usage["estimated_cost_usd"] += cost
+            logger.info(f"TOKEN_USAGE | model={model} | in={in_tok} | out={out_tok} | cost=${cost:.6f}")
+
         return response.choices[0].message.content or ""
 
     @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
@@ -177,4 +198,20 @@ class NebiusClient:
             model=self.model_embed,
             input=redacted_text
         )
+        
+        # Track usage
+        self._usage["calls"] += 1
+        if hasattr(response, 'usage') and response.usage:
+            in_tok = response.usage.prompt_tokens
+            cost = (in_tok * 0.0000001)
+            self._usage["input_tokens"] += in_tok
+            self._usage["estimated_cost_usd"] += cost
+            logger.info(f"TOKEN_USAGE | model={self.model_embed} | in={in_tok} | out=0 | cost=${cost:.6f}")
+            
         return response.data[0].embedding
+
+    def get_usage(self) -> Dict[str, Any]:
+        """
+        Return the usage statistics for this client instance.
+        """
+        return self._usage

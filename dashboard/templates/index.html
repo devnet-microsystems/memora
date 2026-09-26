@@ -41,6 +41,19 @@
                     </div>
                 </div>
 
+                <!-- Voice Assistant -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Assistente Vocale</h5>
+                        <button class="btn btn-sm btn-danger" id="btn-speak" onclick="startListening()">🎙️ Parla</button>
+                    </div>
+                    <div class="card-body">
+                        <div id="conversation-box" class="p-2 bg-light rounded" style="max-height: 300px; overflow-y: auto;">
+                            <div class="text-muted small mb-2 text-center" id="voice-placeholder">Premi "Parla" e fai una domanda.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Feature Toggles Placeholder -->
                 <div class="card">
                     <div class="card-header bg-white">
@@ -207,6 +220,141 @@
             } finally {
                 btn.disabled = false;
                 btn.innerText = "Genera";
+            }
+        }
+
+        // Voice Interaction Logic
+        const btnSpeak = document.getElementById('btn-speak');
+        const conversationBox = document.getElementById('conversation-box');
+
+        function appendMessage(sender, text) {
+            const placeholder = document.getElementById('voice-placeholder');
+            if (placeholder) placeholder.remove();
+
+            const msgDiv = document.createElement('div');
+            msgDiv.className = 'mb-2 pb-2 border-bottom';
+            if (sender === 'Tu') {
+                msgDiv.innerHTML = `<strong>Tu:</strong> <span style="font-style: italic;">${text}</span>`;
+            } else if (sender === 'Memora') {
+                msgDiv.innerHTML = `<strong class="text-primary">Memora:</strong> <span class="text-primary">${text}</span>`;
+            } else {
+                msgDiv.innerHTML = `<span class="text-muted small">${text}</span>`;
+            }
+            conversationBox.appendChild(msgDiv);
+            conversationBox.scrollTop = conversationBox.scrollHeight;
+        }
+
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isProcessing = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = 'it-IT';
+            recognition.interimResults = false;
+            recognition.continuous = false;
+            recognition.maxAlternatives = 1;
+
+            recognition.onstart = () => {
+                btnSpeak.classList.replace('btn-danger', 'btn-success');
+                btnSpeak.innerText = "Ascolto...";
+            };
+
+            recognition.onresult = async (event) => {
+                if (isProcessing) return;
+                const result = event.results[event.results.length - 1];
+                if (!result.isFinal) return;
+
+                isProcessing = true;
+                recognition.stop();
+                btnSpeak.disabled = true;
+                btnSpeak.classList.remove('btn-success', 'btn-danger');
+                btnSpeak.classList.add('btn-secondary');
+                btnSpeak.innerText = "Elaborazione...";
+
+                const speechResult = result[0].transcript;
+                appendMessage('Tu', speechResult);
+                await askAgent(speechResult);
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'aborted') return;
+                console.error("Speech error:", event.error);
+                appendMessage('Sistema', "Errore: " + event.error + ". Riprova.");
+                speakResponse("Non ho capito, riprova.");
+            };
+
+            recognition.onend = () => {
+                if (!isProcessing) {
+                    resetVoiceUI();
+                }
+            };
+        } else {
+            appendMessage('Sistema', "API Vocale non supportata in questo browser.");
+            btnSpeak.disabled = true;
+        }
+
+        function resetVoiceUI() {
+            isProcessing = false;
+            btnSpeak.disabled = false;
+            btnSpeak.classList.remove('btn-success', 'btn-secondary');
+            btnSpeak.classList.add('btn-danger');
+            btnSpeak.innerText = "🎙️ Parla";
+        }
+
+        function startListening() {
+            if (recognition && !btnSpeak.disabled && !isProcessing) {
+                recognition.start();
+            }
+        }
+
+        async function askAgent(text) {
+            const loadingId = 'loading-' + Date.now();
+            const loadingDiv = document.createElement('div');
+            loadingDiv.id = loadingId;
+            loadingDiv.className = 'text-muted small mb-2';
+            loadingDiv.innerText = "Memora sta digitando...";
+            conversationBox.appendChild(loadingDiv);
+            conversationBox.scrollTop = conversationBox.scrollHeight;
+
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ user_input: text })
+                });
+                
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+                
+                if (!response.ok) throw new Error("Errore API");
+                const data = await response.json();
+                
+                appendMessage('Memora', data.response);
+                speakResponse(data.response);
+                
+                // Refresh memory graph in case the agent wrote to it
+                loadMemory();
+            } catch (error) {
+                console.error("Agent error:", error);
+                const loader = document.getElementById(loadingId);
+                if (loader) loader.remove();
+                appendMessage('Sistema', "Errore di comunicazione con l'assistente.");
+                speakResponse("Si è verificato un errore di connessione.");
+            }
+        }
+
+        function speakResponse(text) {
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = 'it-IT';
+                utterance.rate = 0.9;
+                utterance.onend = () => { resetVoiceUI(); };
+                utterance.onerror = () => { resetVoiceUI(); };
+                window.speechSynthesis.speak(utterance);
+            } else {
+                resetVoiceUI();
             }
         }
 
