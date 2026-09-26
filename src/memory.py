@@ -245,9 +245,11 @@ class MemoryGraph:
         logger.info(f"export_graph: {self.graph.number_of_nodes()} nodi, {self.graph.number_of_edges()} edges")
         nodes = []
         for n, data in self.graph.nodes(data=True):
+            content = data.get("content", n)
+            label = content[:40] + "..." if len(content) > 40 else content
             nodes.append({
                 "id": n, 
-                "label": n, 
+                "label": label, 
                 "group": data.get("type", "unknown")
             })
             
