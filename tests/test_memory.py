@@ -88,4 +88,4 @@ def test_export_graph(memory):
     export = memory.export_graph()
     assert len(export["nodes"]) == 2
     assert len(export["edges"]) == 1
-    assert export["nodes"][0]["label"] == "maria"
+    assert export["nodes"][0]["label"] == "Utente"

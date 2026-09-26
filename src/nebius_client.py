@@ -7,7 +7,7 @@ Ensures prompts are redacted for privacy before sending.
 import os
 import re
 import logging
-from typing import List, Dict, Iterator
+from typing import List, Dict, Iterator, Any
 from dotenv import load_dotenv
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential

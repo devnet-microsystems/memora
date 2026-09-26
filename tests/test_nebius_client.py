@@ -44,6 +44,9 @@ def test_chat(client, mock_openai):
     mock_response = MagicMock()
     mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "Risposta mockata"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
     mock_openai.chat.completions.create.return_value = mock_response
     
     messages = [{"role": "user", "content": "Il mio numero è 333-1234567"}]
@@ -79,7 +82,11 @@ def test_chat_stream(client, mock_openai):
 def test_quick_intent(client, mock_openai):
     """Test quick intent helper."""
     mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "SALUTO"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
     mock_openai.chat.completions.create.return_value = mock_response
     
     assert client.quick_intent("Ciao") == "SALUTO"
@@ -87,7 +94,11 @@ def test_quick_intent(client, mock_openai):
 def test_respond(client, mock_openai):
     """Test respond helper."""
     mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "Risposta"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
     mock_openai.chat.completions.create.return_value = mock_response
     
     assert client.respond("Domanda") == "Risposta"
@@ -95,7 +106,11 @@ def test_respond(client, mock_openai):
 def test_plan(client, mock_openai):
     """Test plan helper."""
     mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "Piano"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
     mock_openai.chat.completions.create.return_value = mock_response
     
     assert client.plan("Organizza") == "Piano"
@@ -105,6 +120,8 @@ def test_embed(client, mock_openai):
     mock_response = MagicMock()
     mock_response.data = [MagicMock()]
     mock_response.data[0].embedding = [0.1, 0.2]
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
     mock_openai.embeddings.create.return_value = mock_response
     
     emb = client.embed("test.email@example.com")
@@ -117,7 +134,11 @@ def test_retry(client, mock_openai):
     """Test tenacity retry on chat."""
     # Fail twice, succeed third time
     mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
     mock_response.choices[0].message.content = "Successo"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 100
+    mock_response.usage.completion_tokens = 50
     
     mock_openai.chat.completions.create.side_effect = [
         Exception("API Error"),
