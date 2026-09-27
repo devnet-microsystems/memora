@@ -86,3 +86,35 @@ def test_search_retry_on_timeout(tool, mock_tavily_client):
         
     # Tenacity should retry up to the configured limit (3 attempts total)
     assert mock_tavily_client.search.call_count == 3
+
+def test_best_use_of_tavily_scenario(tool, mock_tavily_client):
+    """
+    Test the specific scenario targeted for the 'Best Use of Tavily' Hackathon Bonus Award.
+    Simulates a time-critical query for an open pharmacy to demonstrate context injection.
+    """
+    mock_tavily_client.search.return_value = {
+        "query": "farmacia di turno vicino a Milano Centrale",
+        "results": [
+            {
+                "title": "Farmacie di turno a Milano",
+                "url": "https://www.esempio.it/farmacie",
+                "content": "Farmacia S. Teresa. corso Magenta,96. tel. +39 02 48195412"
+            }
+        ]
+    }
+    
+    results = tool.find_pharmacy("Milano Centrale")
+    
+    # Verify exact payload structure required by TavilyClient
+    mock_tavily_client.search.assert_called_once_with(
+        query="farmacia di turno vicino a Milano Centrale",
+        max_results=3,
+        search_depth="basic"
+    )
+    
+    # Verify the mapping outputs precisely what the Nemotron Agent needs
+    assert len(results) == 1
+    assert results[0]["title"] == "Farmacie di turno a Milano"
+    assert "Farmacia S. Teresa" in results[0]["snippet"]
+    assert "+39 02 48195412" in results[0]["snippet"]
+    assert results[0]["url"] == "https://www.esempio.it/farmacie"

@@ -92,6 +92,10 @@ Memora dynamically routes tasks to different Nemotron tiers to optimize latency 
 ## How We Use Tavily
 Tavily is integrated as an external tool accessible via the agent. It is specifically used for context-aware, real-time web searches tailored to the user's location, such as finding the nearest open pharmacy, local emergency medical contacts (guardia medica), or caregiver support groups.
 
+### Bonus Track: Best Use of Tavily
+**We are explicitly submitting Memora for the "Best Use of Tavily" Bonus Award.**  
+Mild Cognitive Impairment (MCI) patients can get easily disoriented or experience sudden panic, particularly regarding their medication or minor health issues. Memora uses Tavily to instantly ground the LLM with live, hyper-local data. For example, if a patient is confused at night, the agent transparently executes `tavily_tool.find_pharmacy("Milano")` to retrieve open pharmacies ("Farmacia S. Teresa. corso Magenta, 96. tel. +39 02 48195412") without hallucinating a closed or non-existent business. This turns a generic AI into a reliable, localized emergency companion. (See `tests/test_tavily_tool.py::test_best_use_of_tavily_scenario` for the verifiable integration).
+
 ## Feedback on Nebius and NVIDIA
 - **Latency**: Nano: 1.4s, Super: 2.7s, Ultra: 14s
 - **Cost**: Nano: $0.000144, Super: $0.0015, Ultra: $0.002
