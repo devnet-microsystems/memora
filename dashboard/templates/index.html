@@ -4,183 +4,201 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memora Dashboard - Caregiver View</title>
-    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Bootstrap 5 as requested for consistency -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        :root {
-            --bg-color: #FAF9F6;
-            --text-primary: #1A1A1A;
-            --text-secondary: #4D4D4D;
-            --border-color: #595959;
-            --alert-color: #D32F2F;
-            --action-color: #0056B3;
-        }
-        body { 
-            background-color: var(--bg-color); 
-            color: var(--text-primary);
-            font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; 
-            margin: 0;
-            padding: 0;
-            font-size: 16px;
-        }
-        *:focus-visible { outline: 3px solid var(--action-color) !important; outline-offset: 2px !important; }
+        body { background-color: #f8f9fa; font-size: 16px; }
+        .navbar-brand { font-weight: bold; }
+        #network-graph { width: 100%; height: 500px; border: 1px solid #dee2e6; border-radius: 5px; background: white; }
+        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        .font-large { font-size: 1.1rem; }
         
-        /* Layout Grid */
-        .navbar {
-            padding: 1rem 2rem;
-            border-bottom: 1px solid var(--border-color);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .navbar a { color: var(--text-primary); text-decoration: none; font-weight: bold; font-size: 1.2rem; }
-        .container {
-            display: grid;
-            grid-template-columns: 2fr 1fr;
-            gap: 2rem;
-            padding: 2rem;
-            max-width: 1400px;
-            margin: 0 auto;
-        }
-        
-        /* Panels */
-        .panel {
-            border: 1px solid var(--border-color);
-            background: #FFFFFF;
-            padding: 1.5rem;
-            margin-bottom: 2rem;
-        }
-        h2 { font-size: 1.25rem; font-weight: bold; margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
-        
-        /* Typography specifics */
-        .mono-text { font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace; font-size: 14px; }
-        
-        /* Graph */
-        #network-graph { width: 100%; height: 500px; border: 1px solid #CCC; background: #FFF; }
-        
-        /* Forms & Buttons */
-        label { display: block; font-weight: bold; margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-secondary); }
-        input, select, textarea { 
-            width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); 
-            margin-bottom: 1rem; font-family: inherit; font-size: 1rem; box-sizing: border-box; 
-        }
-        button {
-            background-color: transparent;
-            color: var(--text-primary);
-            border: 1px solid var(--border-color);
-            padding: 0.5rem 1rem;
-            font-size: 1rem;
-            font-family: inherit;
-            cursor: pointer;
-            font-weight: bold;
-        }
-        button:hover { background-color: #EEE; }
-        button.primary { background-color: var(--action-color); color: white; border-color: var(--action-color); }
-        button.primary:hover { background-color: #004085; }
-        button.danger { background-color: var(--alert-color); color: white; border-color: var(--alert-color); }
-        
-        /* Lists */
-        ul { list-style: none; padding: 0; margin: 0; }
-        li { padding: 0.75rem 0; border-bottom: 1px solid #CCC; display: flex; justify-content: space-between; align-items: start; }
-        li:last-child { border-bottom: none; }
-        
-        /* Anomaly Panel */
-        .panel.anomaly-active { background-color: var(--alert-color); color: #FFFFFF; border-color: var(--alert-color); }
-        .panel.anomaly-active h2 { border-bottom-color: #FFFFFF; color: #FFFFFF; }
-        
-        /* Modal Wizard */
         #wizard-modal {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;
-        }
-        #wizard-modal .modal-content {
-            background: var(--bg-color); padding: 2rem; border: 2px solid var(--border-color);
-            width: 100%; max-width: 600px;
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.75); z-index: 1050; display: flex;
+            align-items: center; justify-content: center;
         }
     </style>
 </head>
 <body>
-
-    <nav class="navbar">
-        <a href="/">🧠 Memora - Caregiver Hub</a>
-        <a href="/patient">Vista Paziente</a>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#">🧠 Memora - Caregiver Hub</a>
+            <a href="/patient" class="btn btn-outline-light btn-sm">Vista Paziente</a>
+        </div>
     </nav>
 
     <!-- WIZARD MODAL -->
-    <div id="wizard-modal">
-        <div class="modal-content">
-            <h2>Configurazione Iniziale (1/3)</h2>
-            <div id="wizard-step-1">
-                <label>Nome del paziente e informazioni base (es. Maria, 78 anni)</label>
-                <input type="text" id="wiz-patient" placeholder="Maria, 78 anni, abita a Milano">
-                <button class="primary" onclick="nextWizard(1)">Continua</button>
+    <div id="wizard-modal" class="d-none">
+        <div class="card w-100" style="max-width: 600px;">
+            <div class="card-header bg-primary text-white d-flex justify-content-between">
+                <h5 class="mb-0">Configurazione Iniziale</h5>
+                <span id="wiz-progress" class="badge bg-light text-primary">Step 1 di 6</span>
             </div>
-            <div id="wizard-step-2" style="display:none;">
-                <h2>Configurazione Iniziale (2/3)</h2>
-                <label>Chi è il caregiver primario? (es. Luca, figlio)</label>
-                <input type="text" id="wiz-caregiver" placeholder="Luca, figlio, numero emergenza...">
-                <button class="primary" onclick="nextWizard(2)">Continua</button>
+            <div class="card-body font-large">
+                
+                <!-- Step 1 -->
+                <div id="wiz-step-1" class="wizard-step">
+                    <label class="form-label fw-bold">Chi è la persona assistita?</label>
+                    <input type="text" id="w1-name" class="form-control mb-2" placeholder="Nome breve (es. maria)">
+                    <textarea id="w1-content" class="form-control" rows="2" placeholder="Dettagli (es. Maria, 78 anni, abita a Milano)"></textarea>
+                </div>
+                
+                <!-- Step 2 -->
+                <div id="wiz-step-2" class="wizard-step d-none">
+                    <label class="form-label fw-bold">Chi sono i familiari principali?</label>
+                    <input type="text" id="w2-name" class="form-control mb-2" placeholder="Nome (es. luca)">
+                    <input type="text" id="w2-content" class="form-control" placeholder="Dettagli (es. Luca, figlio)">
+                </div>
+
+                <!-- Step 3 -->
+                <div id="wiz-step-3" class="wizard-step d-none">
+                    <label class="form-label fw-bold">Dove vive?</label>
+                    <input type="text" id="w3-name" class="form-control mb-2" placeholder="ID (es. casa_milano)">
+                    <input type="text" id="w3-content" class="form-control" placeholder="Indirizzo esatto">
+                </div>
+
+                <!-- Step 4 -->
+                <div id="wiz-step-4" class="wizard-step d-none">
+                    <label class="form-label fw-bold">Quali farmaci assume?</label>
+                    <input type="text" id="w4-name" class="form-control mb-2" placeholder="Nome breve (es. pillola_pressione)">
+                    <input type="text" id="w4-content" class="form-control" placeholder="Dettaglio e orario (es. 1 pastiglia alle 8:00)">
+                </div>
+
+                <!-- Step 5 -->
+                <div id="wiz-step-5" class="wizard-step d-none">
+                    <label class="form-label fw-bold">Quali sono le abitudini quotidiane?</label>
+                    <input type="text" id="w5-name" class="form-control mb-2" placeholder="ID (es. passeggiata)">
+                    <input type="text" id="w5-content" class="form-control" placeholder="Dettaglio (es. Passeggiata al parco alle 10)">
+                </div>
+
+                <!-- Step 6 -->
+                <div id="wiz-step-6" class="wizard-step d-none">
+                    <label class="form-label fw-bold">Chi è il caregiver principale?</label>
+                    <input type="text" id="w6-name" class="form-control mb-2" placeholder="ID (es. giulia_badante)">
+                    <input type="text" id="w6-content" class="form-control" placeholder="Nome e telefono per emergenze">
+                </div>
+
             </div>
-            <div id="wizard-step-3" style="display:none;">
-                <h2>Configurazione Iniziale (3/3)</h2>
-                <label>Farmaci o Routine critiche (es. Pillola pressione ogni mattina)</label>
-                <input type="text" id="wiz-meds" placeholder="Pillola pressione ore 8:00">
-                <button class="primary" onclick="submitWizard()">Salva Configurazione</button>
+            <div class="card-footer d-flex justify-content-between">
+                <button class="btn btn-secondary" onclick="skipWizard()">Salta, configuro dopo</button>
+                <div>
+                    <button class="btn btn-outline-primary me-2" id="btn-wiz-prev" onclick="prevWizardStep()" style="display:none;">Indietro</button>
+                    <button class="btn btn-primary" id="btn-wiz-next" onclick="nextWizardStep()">Avanti</button>
+                </div>
             </div>
         </div>
     </div>
 
-    <div class="container">
-        <!-- LEFT COLUMN -->
-        <div class="left-col">
-            <div class="panel">
-                <h2>Mappa della Memoria (Knowledge Graph)</h2>
-                <div id="network-graph"></div>
-                <button onclick="loadMemory()" style="margin-top: 1rem; width: 100%;">Forza Aggiornamento</button>
-            </div>
+    <div class="container-fluid mt-4 px-4">
+        <div class="row">
+            <!-- Left Column: Forms & Graph -->
+            <div class="col-lg-8">
+                
+                <!-- Aggiungi Informazione -->
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold">Aggiungi informazione</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="form-add-node" onsubmit="handleManualAdd(event)">
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Tipo di Nodo</label>
+                                    <select id="add-type" class="form-select" required>
+                                        <option value="person">Persona</option>
+                                        <option value="place">Luogo</option>
+                                        <option value="routine">Routine</option>
+                                        <option value="med">Farmaco</option>
+                                        <option value="event">Evento</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Nome breve (senza spazi)</label>
+                                    <input type="text" id="add-id" class="form-control" placeholder="es. maria" required pattern="^\S+$" title="Nessuno spazio vuoto consentito">
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Contenuto descrittivo</label>
+                                <textarea id="add-content" class="form-control" rows="2" placeholder="es. Maria, 68 anni, vive sola a Milano" required></textarea>
+                            </div>
+                            
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label class="form-label">Relazione (Opzionale)</label>
+                                    <select id="add-relation" class="form-select">
+                                        <option value="">-- Nessuna --</option>
+                                        <option value="nonna_di">nonna_di</option>
+                                        <option value="madre_di">madre_di</option>
+                                        <option value="figlio_di">figlio_di</option>
+                                        <option value="vive_a">vive_a</option>
+                                        <option value="assume">assume</option>
+                                        <option value="abitudine">abitudine</option>
+                                        <option value="altro">altro</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Nodo collegato (Opzionale)</label>
+                                    <select id="add-target" class="form-select">
+                                        <option value="">-- Seleziona nodo --</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-flex align-items-center">
+                                <button type="submit" id="btn-add-node" class="btn btn-primary">Aggiungi al grafo</button>
+                                <span id="add-feedback" class="ms-3 fw-bold"></span>
+                            </div>
+                        </form>
+                    </div>
+                </div>
 
-            <div class="panel">
-                <h2>Aggiungi Informazione Manuale</h2>
-                <form id="add-node-form" onsubmit="addManualNode(event)">
-                    <label>Tipo di Informazione</label>
-                    <select id="node-type" required>
-                        <option value="person">Persona</option>
-                        <option value="place">Luogo</option>
-                        <option value="event">Evento</option>
-                        <option value="med">Farmaco/Salute</option>
-                        <option value="habit">Abitudine/Routine</option>
-                    </select>
-                    
-                    <label>Contenuto</label>
-                    <input type="text" id="node-content" required placeholder="Es: Appuntamento dal dentista il martedì">
-                    
-                    <button type="submit" class="primary">Salva nel Grafo</button>
-                </form>
-            </div>
-        </div>
-
-        <!-- RIGHT COLUMN -->
-        <div class="right-col">
-            
-            <div class="panel" id="flag-panel">
-                <h2>Allarmi & Anomalie (Flags)</h2>
-                <ul id="flag-list" class="mono-text"></ul>
-            </div>
-
-            <div class="panel">
-                <h2>Nuovi Fatti (Da Approvare)</h2>
-                <ul id="pending-list" class="mono-text"></ul>
-            </div>
-
-            <div class="panel">
-                <h2>Report Settimanale</h2>
-                <button id="btn-report" class="primary" onclick="generateReport()" style="width: 100%; margin-bottom: 1rem;">Genera Analisi (Nemotron Ultra)</button>
-                <div id="report-content" class="mono-text" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 1rem;">
-                    Nessun report generato.
+                <!-- Memory Graph -->
+                <div class="card">
+                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0 fw-bold">Grafo di Memoria</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadMemory()">Aggiorna Ora</button>
+                    </div>
+                    <div class="card-body p-0">
+                        <div id="network-graph"></div>
+                    </div>
                 </div>
             </div>
 
+            <!-- Right Column -->
+            <div class="col-lg-4">
+                
+                <!-- Flags Panel -->
+                <div class="card" id="flag-panel">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold">Allarmi & Anomalie</h5>
+                    </div>
+                    <ul class="list-group list-group-flush" id="flag-list"></ul>
+                </div>
+
+                <!-- Pending Nodes Panel -->
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold">Da Approvare (In attesa)</h5>
+                    </div>
+                    <ul class="list-group list-group-flush" id="pending-list"></ul>
+                </div>
+
+                <!-- Report Section -->
+                <div class="card">
+                    <div class="card-header bg-white">
+                        <h5 class="mb-0 fw-bold">Report Settimanale</h5>
+                    </div>
+                    <div class="card-body">
+                        <button class="btn btn-primary w-100 mb-3" id="btn-report" onclick="generateReport()">Genera Report Ultra</button>
+                        <div id="report-content" class="bg-light p-3 border rounded" style="max-height: 250px; overflow-y: auto; font-size: 14px;">
+                            Clicca su Genera per creare l'analisi.
+                        </div>
+                    </div>
+                </div>
+
+            </div>
         </div>
     </div>
 
@@ -196,65 +214,136 @@
                 
                 checkWizard(globalNodes);
                 renderGraph(data);
+                populateTargetSelect(globalNodes);
                 renderLists(globalNodes);
-            } catch (e) {
-                console.error("Load Memory error:", e);
+            } catch (error) {
+                console.error("Load Memory error:", error);
             }
         }
 
-        function checkWizard(nodes) {
-            // If no core nodes exist (filter out interactions/pending), show wizard
-            const coreNodes = nodes.filter(n => n.group !== 'interaction' && n.group !== 'pending' && n.group !== 'flag');
-            if (coreNodes.length === 0) {
-                document.getElementById('wizard-modal').style.display = 'flex';
-            } else {
-                document.getElementById('wizard-modal').style.display = 'none';
-            }
+        // --- FORM AGGIUNGI INFORMAZIONE ---
+        function populateTargetSelect(nodes) {
+            const select = document.getElementById('add-target');
+            select.innerHTML = '<option value="">-- Seleziona nodo --</option>';
+            nodes.filter(n => n.group !== 'interaction' && n.group !== 'flag').forEach(n => {
+                select.innerHTML += `<option value="${n.id}">${n.id} (${n.group})</option>`;
+            });
         }
 
-        function nextWizard(step) {
-            document.getElementById('wizard-step-' + step).style.display = 'none';
-            document.getElementById('wizard-step-' + (step + 1)).style.display = 'block';
-        }
-
-        async function submitWizard() {
-            const p = document.getElementById('wiz-patient').value;
-            const c = document.getElementById('wiz-caregiver').value;
-            const m = document.getElementById('wiz-meds').value;
-            
-            if(p) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'paziente_base', type: 'person', content: p}) });
-            if(c) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'caregiver_base', type: 'person', content: c}) });
-            if(m) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'routine_base', type: 'med', content: m}) });
-            
-            document.getElementById('wizard-modal').style.display = 'none';
-            loadMemory();
-        }
-
-        async function addManualNode(e) {
+        async function handleManualAdd(e) {
             e.preventDefault();
-            const type = document.getElementById('node-type').value;
-            const content = document.getElementById('node-content').value;
-            const id = 'node_' + Date.now();
+            const type = document.getElementById('add-type').value;
+            const id = document.getElementById('add-id').value.trim();
+            const content = document.getElementById('add-content').value.trim();
+            const relation = document.getElementById('add-relation').value;
+            const target = document.getElementById('add-target').value;
             
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: type, content: content})
-            });
-            document.getElementById('add-node-form').reset();
+            const btn = document.getElementById('btn-add-node');
+            const feedback = document.getElementById('add-feedback');
+            
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+            btn.disabled = true;
+            feedback.innerHTML = '';
+
+            try {
+                // Salva Nodo
+                const resNode = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: type, content: content})
+                });
+                if(!resNode.ok) throw new Error("Errore API Nodo");
+
+                // Salva Relazione se presente
+                if(relation && target) {
+                    const resEdge = await fetch('/api/memory/edge', {
+                        method: 'POST',
+                        headers:{'Content-Type':'application/json'},
+                        body: JSON.stringify({source: id, target: target, relation: relation})
+                    });
+                    if(!resEdge.ok) throw new Error("Errore API Arco");
+                }
+
+                feedback.innerHTML = `<span class="text-success">Aggiunto: ${id}</span>`;
+                document.getElementById('form-add-node').reset();
+                loadMemory(); // Refresh immediato
+            } catch (err) {
+                feedback.innerHTML = `<span class="text-danger">Errore: ${err.message}</span>`;
+            } finally {
+                btn.innerHTML = 'Aggiungi al grafo';
+                btn.disabled = false;
+                setTimeout(() => feedback.innerHTML = '', 3000);
+            }
+        }
+
+        // --- ONBOARDING WIZARD ---
+        let currentWizStep = 1;
+        function checkWizard(nodes) {
+            const coreNodes = nodes.filter(n => n.group !== 'interaction' && n.group !== 'pending' && n.group !== 'flag');
+            if (coreNodes.length === 0 && localStorage.getItem('wiz_done') !== 'true') {
+                document.getElementById('wizard-modal').classList.remove('d-none');
+                const saved = localStorage.getItem('wiz_step');
+                if(saved) currentWizStep = parseInt(saved);
+                showWizStep(currentWizStep);
+            }
+        }
+
+        function showWizStep(step) {
+            document.querySelectorAll('.wizard-step').forEach(el => el.classList.add('d-none'));
+            document.getElementById(`wiz-step-${step}`).classList.remove('d-none');
+            document.getElementById('wiz-progress').innerText = `Step ${step} di 6`;
+            
+            document.getElementById('btn-wiz-prev').style.display = step > 1 ? 'inline-block' : 'none';
+            document.getElementById('btn-wiz-next').innerText = step === 6 ? 'Salva Configurazione' : 'Avanti';
+            
+            localStorage.setItem('wiz_step', step);
+        }
+
+        async function saveCurrentWizStep() {
+            let id, type, content;
+            if(currentWizStep === 1) { id = document.getElementById('w1-name').value; type = 'person'; content = document.getElementById('w1-content').value; }
+            if(currentWizStep === 2) { id = document.getElementById('w2-name').value; type = 'person'; content = document.getElementById('w2-content').value; }
+            if(currentWizStep === 3) { id = document.getElementById('w3-name').value; type = 'place'; content = document.getElementById('w3-content').value; }
+            if(currentWizStep === 4) { id = document.getElementById('w4-name').value; type = 'med'; content = document.getElementById('w4-content').value; }
+            if(currentWizStep === 5) { id = document.getElementById('w5-name').value; type = 'routine'; content = document.getElementById('w5-content').value; }
+            if(currentWizStep === 6) { id = document.getElementById('w6-name').value; type = 'person'; content = document.getElementById('w6-content').value; }
+            
+            if(id && content) {
+                await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: type, content: content})
+                });
+            }
+        }
+
+        async function nextWizardStep() {
+            await saveCurrentWizStep();
+            if(currentWizStep < 6) {
+                currentWizStep++;
+                showWizStep(currentWizStep);
+            } else {
+                alert("Setup completato!");
+                skipWizard();
+                loadMemory();
+            }
+        }
+
+        function prevWizardStep() {
+            if(currentWizStep > 1) {
+                currentWizStep--;
+                showWizStep(currentWizStep);
+            }
+        }
+
+        function skipWizard() {
+            document.getElementById('wizard-modal').classList.add('d-none');
+            localStorage.setItem('wiz_done', 'true');
             loadMemory();
         }
 
-        async function approveNode(id, content) {
-            // Update node to 'event' type instead of 'pending'
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: 'event', content: content})
-            });
-            loadMemory();
-        }
 
+        // --- PENDING AND FLAGS ---
         async function rejectNode(id) {
             await fetch(`/api/memory/${id}`, { method: 'DELETE' });
             loadMemory();
@@ -267,44 +356,50 @@
             
             pendingList.innerHTML = '';
             flagList.innerHTML = '';
-            
             let hasFlags = false;
 
             nodes.forEach(n => {
                 if (n.group === 'pending') {
                     pendingList.innerHTML += `
-                        <li>
-                            <div style="margin-right: 1rem;">${n.label}</div>
-                            <div style="flex-shrink:0;">
-                                <button onclick="approveNode('${n.id}', '${n.label.replace(/'/g, "\\'")}')">Approva</button>
-                                <button class="danger" onclick="rejectNode('${n.id}')">Scarta</button>
+                        <li class="list-group-item d-flex justify-content-between align-items-center">
+                            <span>${n.label}</span>
+                            <div class="btn-group">
+                                <button class="btn btn-sm btn-success" onclick="approveNode('${n.id}', '${n.label.replace(/'/g, "\\'")}')">Appr</button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectNode('${n.id}')">Scarta</button>
                             </div>
                         </li>
                     `;
                 } else if (n.group === 'flag') {
                     hasFlags = true;
-                    flagList.innerHTML += `<li><strong>${n.label}</strong> <button onclick="rejectNode('${n.id}')">Risolto</button></li>`;
+                    flagList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center bg-danger text-white border-danger"><strong>${n.label}</strong> <button class="btn btn-sm btn-light text-danger" onclick="rejectNode('${n.id}')">Risolto</button></li>`;
                 }
             });
 
-            if(pendingList.innerHTML === '') pendingList.innerHTML = '<li>Nessun fatto in sospeso.</li>';
-            if(flagList.innerHTML === '') flagList.innerHTML = '<li>Nessuna anomalia rilevata.</li>';
+            if(pendingList.innerHTML === '') pendingList.innerHTML = '<li class="list-group-item text-muted">Nessun fatto in sospeso.</li>';
+            if(flagList.innerHTML === '') flagList.innerHTML = '<li class="list-group-item text-muted">Nessuna anomalia rilevata.</li>';
 
-            if (hasFlags) {
-                flagPanel.classList.add('anomaly-active');
-            } else {
-                flagPanel.classList.remove('anomaly-active');
-            }
+            if(hasFlags) flagPanel.classList.add('border-danger');
+            else flagPanel.classList.remove('border-danger');
         }
 
+        async function approveNode(id, content) {
+            await fetch('/api/memory', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({id: id, type: 'event', content: content})
+            });
+            loadMemory();
+        }
+
+        // --- GRAPH & REPORT ---
         function renderGraph(data) {
             const container = document.getElementById('network-graph');
-            const groupColors = { 'person': '#97C2FC', 'place': '#FFFF00', 'event': '#FB7E81', 'habit': '#7BE141', 'med': '#FFA807', 'flag': '#D32F2F', 'pending': '#CCCCCC', 'unknown': '#EB7DF4' };
+            const groupColors = { 'person': '#97C2FC', 'place': '#FFFF00', 'event': '#FB7E81', 'routine': '#7BE141', 'med': '#FFA807', 'flag': '#D32F2F', 'pending': '#CCCCCC', 'unknown': '#EB7DF4' };
             const nodes = data.nodes.map(n => ({ id: n.id, label: n.label, color: groupColors[n.group] || groupColors['unknown'] }));
             
             if(network) network.destroy();
             network = new vis.Network(container, {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(data.edges)}, {
-                nodes: { shape: 'box', font: { face: 'ui-monospace' } },
+                nodes: { shape: 'box' },
                 edges: { arrows: 'to' },
                 physics: { stabilization: false }
             });
@@ -313,15 +408,15 @@
         async function generateReport() {
             const btn = document.getElementById('btn-report');
             const content = document.getElementById('report-content');
-            btn.disabled = true; btn.innerText = "Elaborazione...";
+            btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Elaborazione Ultra...';
             try {
                 const response = await fetch('/api/report', { method: 'POST' });
                 const data = await response.json();
                 content.innerHTML = marked.parse(data.report);
             } catch (e) {
-                content.innerHTML = "Errore durante la generazione.";
+                content.innerHTML = "<span class='text-danger'>Errore durante la generazione.</span>";
             } finally {
-                btn.disabled = false; btn.innerText = "Genera Analisi (Nemotron Ultra)";
+                btn.disabled = false; btn.innerHTML = "Genera Report Ultra";
             }
         }
 
