@@ -34,6 +34,11 @@ def patient():
     """Render the patient voice interface."""
     return render_template("patient.html", api_url=API_URL)
 
+@app.route("/judges")
+def judges():
+    """Render the 60-second summary page for hackathon evaluators."""
+    return render_template("judges.html")
+
 @app.route("/api/memory")
 def get_memory():
     """Proxy for getting memory graph."""
