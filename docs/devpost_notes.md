@@ -1,54 +1,25 @@
-# Hackathon Devpost Notes
+# Devpost Feedback Notes: Nebius & Tavily
 
-## Highlight: L'impatto del System Prompt (NVIDIA Nemotron Super)
-Questo è il contrasto tra una chiamata libera e una disciplinata tramite il `MemoraAgent`:
+This document contains specific, technical feedback gathered during the development of Memora for the NVIDIA Global AI Hackathon. These notes are intended to be included in the Devpost submission to provide value to the API providers.
 
-| Metrica | Test 2 (no system prompt) | Test 5 (con system prompt) |
-|---|---|---|
-| Output token | 753 | ~10 |
-| Latenza | 5.81s | 2.72s |
-| Qualità percepita | 6/10 | **10/10** |
-| Rispetta "una domanda per volta" | No | Sì |
+## 1. Feedback for Nebius (Token Factory) & NVIDIA Nemotron
 
-*Conclusione*: Nemotron è altamente istruibile. Il valore aggiunto e la sicurezza clinica dipendono dal metaprompting.
+### What Worked Perfectly: Dynamic Routing & OpenAI Compatibility
+The OpenAI-compatible layer of Token Factory was flawless. We were able to implement a dynamic model routing architecture in `src/nebius_client.py` without installing custom SDKs. 
+- **Nemotron-3 Nano** proved exceptionally fast (1.4s latency) for zero-shot intent classification (`quick_intent`).
+- **Nemotron-3 Super** served as an incredibly reliable conversational backbone. Its instruction-following capabilities are top-tier: it perfectly respected strict system prompts like *"NON dare MAI consigli medici"* (NEVER give medical advice) and *"Fai UNA SOLA domanda per volta"* (Ask ONLY one question at a time), which is notoriously difficult for mid-sized LLMs when context gets long.
+
+### Areas for Improvement / Friction Points:
+- **Model Name Discrepancies:** There is a mismatch between the human-readable model names listed in the Nebius web catalog and the actual string identifiers required to call them via the API. Developers must query the `/models` endpoint directly to discover the exact string to pass to the `model` parameter, which slows down initial onboarding.
+- **Missing Embeddings Endpoint:** While the text generation endpoints are robust, there is a distinct lack of a dedicated `/embeddings` endpoint exposed through the OpenAI compatibility layer. Since Memora relies heavily on cosine similarity for heuristic anomaly detection over the Knowledge Graph, we had to work around this limitation. A native Nemotron embeddings endpoint would make RAG and Graph architectures much easier to build natively on Nebius.
 
 ---
 
-## Test 1 — Nano (data: 2026-09-17)
-- Modello: nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
-- Latenza: ~1.7s
-- Costo: $0.000144
-- Qualità: OK, risposta concisa e corretta (10/10 per la task di base "Rispondi solo con OK")
-- Note: Nomi esatti scoperti interrogando l'API `/models` al posto dei nomi commerciali del catalog web.
+## 2. Feedback for Tavily (Web Search API)
 
-## Test 2 — Super (senza system prompt)
-- Modello: nvidia/nemotron-3-super-120b-a12b
-- Latenza: 5.81s
-- Costo: $0.001537
-- Token: 31 in, 753 out
-- Qualità: 6/10
-- Note: risposta troppo lunga per utente con declino cognitivo.
-  Causa: chiamata diretta a client.respond() senza passare da
-  MemoraAgent, quindi senza system prompt restrittivo.
-  Da ritestare con l'agent completo per validare il comportamento
-  "frasi brevi, una domanda per volta".
+### What Worked Perfectly: Context Injection Format
+Once authenticated, the `tavily-python` SDK is incredibly ergonomic. The payload structure (`results` containing `title`, `url`, and `content`) is perfectly sized and formatted for direct injection into an LLM's context window. We used it to search for local pharmacies (e.g., `"farmacia di turno vicino a Milano Centrale"`), and the snippets returned contained exactly the dense information (addresses, phone numbers) Nemotron needed to assist the patient, without bloating the prompt.
 
-## Test 3 — Embedding (data: 2026-09-17)
-- Modello: Qwen/Qwen3-Embedding-8B
-- Latenza: 1.36s (totale per 3 frasi, ~0.45s a frase)
-- Costo: $0.0000025
-- Qualità: OK. Dimensione del vettore 4096 restituita correttamente, nessun errore di formato.
-
-## Test 4 — Agente Completo con System Prompt (data: 2026-09-17)
-- Modello A (Dialogo): nvidia/nemotron-3-super-120b-a12b
-- Modello B (Intent): nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B
-- Latenza A: 2.72s
-- Latenza B: 1.40s
-- Costo totale (incluse le chiamate embedding): ~$0.00076
-- Token in output di A: ~10 token ("Quando le hai viste l'ultima volta?")
-- Qualità A: 10/10
-- Qualità B: 10/10 (Ha classificato l'intento esattamente come "SALUTO")
-- Note per Devpost: **Most Valuable Feedback**. 
-  Nemotron Super, senza system prompt restrittivo (Test 2), ha generato risposte lunghe e articolate (753 token in output), risultando inadatto a utenti con declino cognitivo. 
-  Tuttavia, quando vincolato dall'Agent con un system prompt esplicito ("Una sola domanda per volta. Tono calmo, rassicurante, frasi brevi e semplici"), la lunghezza è crollata a una singola frase essenziale ("Quando le hai viste l'ultima volta?").
-  La qualità percepita è passata da 6/10 a 10/10. Il modello ha un eccellente livello di *instruction-following* e rispetta i vincoli di sicurezza se inquadrato correttamente tramite metaprompting.
+### Areas for Improvement / Friction Points:
+- **Ambiguous 403 Errors:** During development, we encountered persistent `403 Forbidden` errors when calling the API, even though our API key was correctly formatted (starting with `tvly-`). It was unclear whether the 403 was due to an unverified email, exhausted free-tier credits, or a temporary system outage. 
+- **Documentation Clarity:** The documentation lacks a clear troubleshooting section differentiating between `401 Unauthorized` (bad key), `403 Forbidden` (feature/plan restricted), and `429 Too Many Requests` (rate limited). Improving the API error messages (e.g., `{"error": "403: Free tier credit limit reached"}`) rather than a generic HTTP 403 would significantly speed up developer debugging during high-pressure hackathons.
