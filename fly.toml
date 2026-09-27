@@ -1,25 +1,36 @@
-app = "memora-backend"
-primary_region = "ams"
+# fly.toml app configuration file generated for memora-y2ebcg on 2026-09-27T14:06:28Z
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'memora-y2ebcg'
+primary_region = 'fra'
 
 [build]
-  dockerfile = "Dockerfile"
+  dockerfile = 'Dockerfile'
 
 [env]
-  PORT = "8080"
-  DB_PATH = "/data/memora.db"
-  LOG_LEVEL = "INFO"
-  MODEL_NANO = "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B"
-  MODEL_SUPER = "nvidia/nemotron-3-super-120b-a12b"
-  MODEL_ULTRA = "nvidia/Nemotron-3-Ultra-550b-a55b"
-  MODEL_EMBEDDING = "Qwen/Qwen3-Embedding-8B"
+  DB_PATH = '/data/memora.db'
+  LOG_LEVEL = 'INFO'
+  MODEL_EMBEDDING = 'Qwen/Qwen3-Embedding-8B'
+  MODEL_NANO = 'nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B'
+  MODEL_SUPER = 'nvidia/nemotron-3-super-120b-a12b'
+  MODEL_ULTRA = 'nvidia/Nemotron-3-Ultra-550b-a55b'
+  PORT = '8080'
 
 [[mounts]]
-  source = "memora_data"
-  destination = "/data"
+  source = 'memora_data'
+  destination = '/data'
 
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "suspend"
+  auto_stop_machines = 'suspend'
   auto_start_machines = true
   min_machines_running = 0
+
+[[vm]]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 1024
