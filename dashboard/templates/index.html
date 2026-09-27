@@ -4,266 +4,329 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memora Dashboard - Caregiver View</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
-        body { background-color: #f8f9fa; }
-        .navbar-brand { font-weight: bold; }
-        #network-graph { width: 100%; height: 400px; border: 1px solid #dee2e6; border-radius: 5px; background: white; }
-        .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
-        
-        #report-content {
-            max-width: 900px;
-            padding: 20px;
-            background: #f8f9fa;
-            border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.6;
-            color: #212529;
+        :root {
+            --bg-color: #FAF9F6;
+            --text-primary: #1A1A1A;
+            --text-secondary: #4D4D4D;
+            --border-color: #595959;
+            --alert-color: #D32F2F;
+            --action-color: #0056B3;
         }
-        #report-content h1, #report-content h2, #report-content h3 { margin-top: 20px; color: #212529; }
-        #report-content table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
-        #report-content table th, #report-content table td { border: 1px solid #ddd; padding: 8px; }
-        #report-content code { background: #e9ecef; padding: 2px 4px; border-radius: 3px; }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-primary);
+            font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; 
+            margin: 0;
+            padding: 0;
+            font-size: 16px;
+        }
+        *:focus-visible { outline: 3px solid var(--action-color) !important; outline-offset: 2px !important; }
+        
+        /* Layout Grid */
+        .navbar {
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar a { color: var(--text-primary); text-decoration: none; font-weight: bold; font-size: 1.2rem; }
+        .container {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 2rem;
+            padding: 2rem;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Panels */
+        .panel {
+            border: 1px solid var(--border-color);
+            background: #FFFFFF;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        h2 { font-size: 1.25rem; font-weight: bold; margin-top: 0; margin-bottom: 1rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.5rem; }
+        
+        /* Typography specifics */
+        .mono-text { font-family: ui-monospace, 'JetBrains Mono', Consolas, monospace; font-size: 14px; }
+        
+        /* Graph */
+        #network-graph { width: 100%; height: 500px; border: 1px solid #CCC; background: #FFF; }
+        
+        /* Forms & Buttons */
+        label { display: block; font-weight: bold; margin-bottom: 0.25rem; font-size: 0.9rem; color: var(--text-secondary); }
+        input, select, textarea { 
+            width: 100%; padding: 0.5rem; border: 1px solid var(--border-color); 
+            margin-bottom: 1rem; font-family: inherit; font-size: 1rem; box-sizing: border-box; 
+        }
+        button {
+            background-color: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            font-family: inherit;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        button:hover { background-color: #EEE; }
+        button.primary { background-color: var(--action-color); color: white; border-color: var(--action-color); }
+        button.primary:hover { background-color: #004085; }
+        button.danger { background-color: var(--alert-color); color: white; border-color: var(--alert-color); }
+        
+        /* Lists */
+        ul { list-style: none; padding: 0; margin: 0; }
+        li { padding: 0.75rem 0; border-bottom: 1px solid #CCC; display: flex; justify-content: space-between; align-items: start; }
+        li:last-child { border-bottom: none; }
+        
+        /* Anomaly Panel */
+        .panel.anomaly-active { background-color: var(--alert-color); color: #FFFFFF; border-color: var(--alert-color); }
+        .panel.anomaly-active h2 { border-bottom-color: #FFFFFF; color: #FFFFFF; }
+        
+        /* Modal Wizard */
+        #wizard-modal {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; align-items: center; justify-content: center;
+        }
+        #wizard-modal .modal-content {
+            background: var(--bg-color); padding: 2rem; border: 2px solid var(--border-color);
+            width: 100%; max-width: 600px;
+        }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="#">🧠 Memora - Caregiver Hub</a>
-            <span class="navbar-text text-white">
-                Stato Assistente API: 
-                <span class="{% if status == 'online' %}text-success bg-light px-2 rounded{% else %}text-danger bg-light px-2 rounded{% endif %}">
-                    {{ status | upper }}
-                </span>
-            </span>
-        </div>
+
+    <nav class="navbar">
+        <a href="/">🧠 Memora - Caregiver Hub</a>
+        <a href="/patient">Vista Paziente</a>
     </nav>
 
-    <div class="container mt-4">
-        <div class="row">
-            <!-- Left Column: Graph & Functions -->
-            <div class="col-lg-8">
-                <!-- Memory Graph -->
-                <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Grafo di Memoria (Knowledge Graph)</h5>
-                        <button class="btn btn-sm btn-outline-primary" onclick="loadMemory()">Aggiorna</button>
-                    </div>
-                    <div class="card-body">
-                        <div id="network-graph"></div>
-                    </div>
-                </div>
+    <!-- WIZARD MODAL -->
+    <div id="wizard-modal">
+        <div class="modal-content">
+            <h2>Configurazione Iniziale (1/3)</h2>
+            <div id="wizard-step-1">
+                <label>Nome del paziente e informazioni base (es. Maria, 78 anni)</label>
+                <input type="text" id="wiz-patient" placeholder="Maria, 78 anni, abita a Milano">
+                <button class="primary" onclick="nextWizard(1)">Continua</button>
+            </div>
+            <div id="wizard-step-2" style="display:none;">
+                <h2>Configurazione Iniziale (2/3)</h2>
+                <label>Chi è il caregiver primario? (es. Luca, figlio)</label>
+                <input type="text" id="wiz-caregiver" placeholder="Luca, figlio, numero emergenza...">
+                <button class="primary" onclick="nextWizard(2)">Continua</button>
+            </div>
+            <div id="wizard-step-3" style="display:none;">
+                <h2>Configurazione Iniziale (3/3)</h2>
+                <label>Farmaci o Routine critiche (es. Pillola pressione ogni mattina)</label>
+                <input type="text" id="wiz-meds" placeholder="Pillola pressione ore 8:00">
+                <button class="primary" onclick="submitWizard()">Salva Configurazione</button>
+            </div>
+        </div>
+    </div>
 
-                <!-- Voice Assistant removed from Caregiver view - available in Patient mode -->
+    <div class="container">
+        <!-- LEFT COLUMN -->
+        <div class="left-col">
+            <div class="panel">
+                <h2>Mappa della Memoria (Knowledge Graph)</h2>
+                <div id="network-graph"></div>
+                <button onclick="loadMemory()" style="margin-top: 1rem; width: 100%;">Forza Aggiornamento</button>
+            </div>
 
-                <!-- Feature Toggles Placeholder -->
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0">Impostazioni Assistente</h5>
-                    </div>
-                    <div class="card-body">
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="toggleProactivity" checked>
-                            <label class="form-check-label" for="toggleProactivity">Proattività (suggerisce aiuto in caso di stasi o anomalie)</label>
-                        </div>
-                        <div class="form-check form-switch mb-2">
-                            <input class="form-check-input" type="checkbox" id="toggleWeb" checked>
-                            <label class="form-check-label" for="toggleWeb">Ricerca Web con Tavily (Farmacie, Guardia Medica)</label>
-                        </div>
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="toggleMemoryWrite" checked>
-                            <label class="form-check-label" for="toggleMemoryWrite">Apprendimento continuo (Scrittura di nuovi ricordi nel grafo)</label>
-                        </div>
-                    </div>
+            <div class="panel">
+                <h2>Aggiungi Informazione Manuale</h2>
+                <form id="add-node-form" onsubmit="addManualNode(event)">
+                    <label>Tipo di Informazione</label>
+                    <select id="node-type" required>
+                        <option value="person">Persona</option>
+                        <option value="place">Luogo</option>
+                        <option value="event">Evento</option>
+                        <option value="med">Farmaco/Salute</option>
+                        <option value="habit">Abitudine/Routine</option>
+                    </select>
+                    
+                    <label>Contenuto</label>
+                    <input type="text" id="node-content" required placeholder="Es: Appuntamento dal dentista il martedì">
+                    
+                    <button type="submit" class="primary">Salva nel Grafo</button>
+                </form>
+            </div>
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="right-col">
+            
+            <div class="panel" id="flag-panel">
+                <h2>Allarmi & Anomalie (Flags)</h2>
+                <ul id="flag-list" class="mono-text"></ul>
+            </div>
+
+            <div class="panel">
+                <h2>Nuovi Fatti (Da Approvare)</h2>
+                <ul id="pending-list" class="mono-text"></ul>
+            </div>
+
+            <div class="panel">
+                <h2>Report Settimanale</h2>
+                <button id="btn-report" class="primary" onclick="generateReport()" style="width: 100%; margin-bottom: 1rem;">Genera Analisi (Nemotron Ultra)</button>
+                <div id="report-content" class="mono-text" style="max-height: 300px; overflow-y: auto; border: 1px solid var(--border-color); padding: 1rem;">
+                    Nessun report generato.
                 </div>
             </div>
 
-            <!-- Right Column: List & Report -->
-            <div class="col-lg-4">
-                <!-- Nodes List -->
-                <div class="card">
-                    <div class="card-header bg-white">
-                        <h5 class="mb-0">Gestione Ricordi</h5>
-                    </div>
-                    <div class="card-body p-0" style="max-height: 300px; overflow-y: auto;">
-                        <ul class="list-group list-group-flush" id="node-list">
-                            <li class="list-group-item text-muted">Caricamento in corso...</li>
-                        </ul>
-                    </div>
-                </div>
-
-                <!-- Report Section -->
-                <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Report Settimanale</h5>
-                        <div>
-                            <button class="btn btn-sm btn-secondary me-2" onclick="printReport()">Scarica PDF</button>
-                            <button class="btn btn-sm btn-primary" id="btn-report" onclick="generateReport()">Genera</button>
-                        </div>
-                    </div>
-                    <div class="card-body" style="max-height: 300px; overflow-y: auto;">
-                        <div id="report-content" class="text-muted small">
-                            Clicca su Genera per creare un report comportamentale sintetizzato da Nemotron 3 Ultra.
-                        </div>
-                    </div>
-                </div>
-            </div>
         </div>
     </div>
 
     <script>
         let network = null;
+        let globalNodes = [];
 
         async function loadMemory() {
             try {
                 const response = await fetch('/api/memory');
-                if (!response.ok) throw new Error("Errore API");
                 const data = await response.json();
+                globalNodes = data.nodes;
                 
+                checkWizard(globalNodes);
                 renderGraph(data);
-                renderList(data.nodes);
-            } catch (error) {
-                console.error("Failed to load memory:", error);
-                document.getElementById('node-list').innerHTML = '<li class="list-group-item text-danger">Errore di connessione al backend (FastAPI non risponde).</li>';
+                renderLists(globalNodes);
+            } catch (e) {
+                console.error("Load Memory error:", e);
+            }
+        }
+
+        function checkWizard(nodes) {
+            // If no core nodes exist (filter out interactions/pending), show wizard
+            const coreNodes = nodes.filter(n => n.group !== 'interaction' && n.group !== 'pending' && n.group !== 'flag');
+            if (coreNodes.length === 0) {
+                document.getElementById('wizard-modal').style.display = 'flex';
+            } else {
+                document.getElementById('wizard-modal').style.display = 'none';
+            }
+        }
+
+        function nextWizard(step) {
+            document.getElementById('wizard-step-' + step).style.display = 'none';
+            document.getElementById('wizard-step-' + (step + 1)).style.display = 'block';
+        }
+
+        async function submitWizard() {
+            const p = document.getElementById('wiz-patient').value;
+            const c = document.getElementById('wiz-caregiver').value;
+            const m = document.getElementById('wiz-meds').value;
+            
+            if(p) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'paziente_base', type: 'person', content: p}) });
+            if(c) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'caregiver_base', type: 'person', content: c}) });
+            if(m) await fetch('/api/memory', { method: 'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id: 'routine_base', type: 'med', content: m}) });
+            
+            document.getElementById('wizard-modal').style.display = 'none';
+            loadMemory();
+        }
+
+        async function addManualNode(e) {
+            e.preventDefault();
+            const type = document.getElementById('node-type').value;
+            const content = document.getElementById('node-content').value;
+            const id = 'node_' + Date.now();
+            
+            await fetch('/api/memory', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({id: id, type: type, content: content})
+            });
+            document.getElementById('add-node-form').reset();
+            loadMemory();
+        }
+
+        async function approveNode(id, content) {
+            // Update node to 'event' type instead of 'pending'
+            await fetch('/api/memory', {
+                method: 'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({id: id, type: 'event', content: content})
+            });
+            loadMemory();
+        }
+
+        async function rejectNode(id) {
+            await fetch(`/api/memory/${id}`, { method: 'DELETE' });
+            loadMemory();
+        }
+
+        function renderLists(nodes) {
+            const pendingList = document.getElementById('pending-list');
+            const flagList = document.getElementById('flag-list');
+            const flagPanel = document.getElementById('flag-panel');
+            
+            pendingList.innerHTML = '';
+            flagList.innerHTML = '';
+            
+            let hasFlags = false;
+
+            nodes.forEach(n => {
+                if (n.group === 'pending') {
+                    pendingList.innerHTML += `
+                        <li>
+                            <div style="margin-right: 1rem;">${n.label}</div>
+                            <div style="flex-shrink:0;">
+                                <button onclick="approveNode('${n.id}', '${n.label.replace(/'/g, "\\'")}')">Approva</button>
+                                <button class="danger" onclick="rejectNode('${n.id}')">Scarta</button>
+                            </div>
+                        </li>
+                    `;
+                } else if (n.group === 'flag') {
+                    hasFlags = true;
+                    flagList.innerHTML += `<li><strong>${n.label}</strong> <button onclick="rejectNode('${n.id}')">Risolto</button></li>`;
+                }
+            });
+
+            if(pendingList.innerHTML === '') pendingList.innerHTML = '<li>Nessun fatto in sospeso.</li>';
+            if(flagList.innerHTML === '') flagList.innerHTML = '<li>Nessuna anomalia rilevata.</li>';
+
+            if (hasFlags) {
+                flagPanel.classList.add('anomaly-active');
+            } else {
+                flagPanel.classList.remove('anomaly-active');
             }
         }
 
         function renderGraph(data) {
             const container = document.getElementById('network-graph');
-            
-            // Map groups to colors
-            const groupColors = {
-                'person': '#97C2FC',
-                'place': '#FFFF00',
-                'event': '#FB7E81',
-                'habit': '#7BE141',
-                'med': '#FFA807',
-                'flag': '#ff4d4d',
-                'unknown': '#EB7DF4'
-            };
-
-            const nodes = data.nodes.map(n => ({
-                id: n.id, 
-                label: n.label, 
-                group: n.group,
-                color: groupColors[n.group] || groupColors['unknown']
-            }));
-
-            const graphData = {
-                nodes: new vis.DataSet(nodes),
-                edges: new vis.DataSet(data.edges)
-            };
-            
-            const options = {
-                nodes: { shape: 'dot', size: 20, font: { size: 14 } },
-                edges: { arrows: 'to', font: { size: 12, align: 'middle' } },
-                physics: { stabilization: false }
-            };
+            const groupColors = { 'person': '#97C2FC', 'place': '#FFFF00', 'event': '#FB7E81', 'habit': '#7BE141', 'med': '#FFA807', 'flag': '#D32F2F', 'pending': '#CCCCCC', 'unknown': '#EB7DF4' };
+            const nodes = data.nodes.map(n => ({ id: n.id, label: n.label, color: groupColors[n.group] || groupColors['unknown'] }));
             
             if(network) network.destroy();
-            network = new vis.Network(container, graphData, options);
-        }
-
-        function renderList(nodes) {
-            const list = document.getElementById('node-list');
-            list.innerHTML = '';
-            
-            if(!nodes || nodes.length === 0) {
-                list.innerHTML = '<li class="list-group-item text-muted">Nessun ricordo presente.</li>';
-                return;
-            }
-
-            nodes.forEach(n => {
-                const li = document.createElement('li');
-                li.className = 'list-group-item d-flex justify-content-between align-items-center flex-wrap';
-                li.innerHTML = `
-                    <div class="mb-1">
-                        <span class="badge bg-secondary me-2">${n.group}</span>
-                        <strong>${n.label}</strong>
-                    </div>
-                    <div class="btn-group">
-                        <button class="btn btn-sm btn-outline-warning" onclick="alert('Modifica in sviluppo.')">Correggi</button>
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteNode('${n.id}')">Cancella</button>
-                    </div>
-                `;
-                list.appendChild(li);
+            network = new vis.Network(container, {nodes: new vis.DataSet(nodes), edges: new vis.DataSet(data.edges)}, {
+                nodes: { shape: 'box', font: { face: 'ui-monospace' } },
+                edges: { arrows: 'to' },
+                physics: { stabilization: false }
             });
-        }
-
-        async function deleteNode(nodeId) {
-            if(!confirm(`Diritto all'oblio: vuoi cancellare definitivamente il nodo "${nodeId}" e i suoi legami?`)) return;
-            
-            try {
-                const response = await fetch(`/api/memory/${nodeId}`, { method: 'DELETE' });
-                if(response.ok) {
-                    loadMemory(); // Refresh UI
-                } else {
-                    alert("Errore durante la cancellazione.");
-                }
-            } catch (error) {
-                console.error("Failed to delete node:", error);
-            }
         }
 
         async function generateReport() {
             const btn = document.getElementById('btn-report');
             const content = document.getElementById('report-content');
-            
-            btn.disabled = true;
-            btn.innerText = "Generazione...";
-            content.innerHTML = "<span class='text-primary'>Invocazione Nemotron 3 Ultra in corso...</span>";
-
+            btn.disabled = true; btn.innerText = "Elaborazione...";
             try {
                 const response = await fetch('/api/report', { method: 'POST' });
-                if(!response.ok) throw new Error("Errore API");
                 const data = await response.json();
-                
-                // Format response
                 content.innerHTML = marked.parse(data.report);
-            } catch (error) {
-                console.error("Failed to generate report:", error);
-                content.innerHTML = '<span class="text-danger">Errore. Assicurati che FastAPI e l\'API Nebius siano raggiungibili.</span>';
+            } catch (e) {
+                content.innerHTML = "Errore durante la generazione.";
             } finally {
-                btn.disabled = false;
-                btn.innerText = "Genera";
+                btn.disabled = false; btn.innerText = "Genera Analisi (Nemotron Ultra)";
             }
         }
 
-        function printReport() {
-            const reportHTML = document.getElementById('report-content').innerHTML;
-            if (reportHTML.includes("Clicca su Genera") || reportHTML.includes("Invocazione Nemotron")) {
-                alert("Genera prima il report.");
-                return;
-            }
-            
-            const printWindow = window.open('', '', 'height=600,width=800');
-            printWindow.document.write('<html><head><title>Memora Report Settimanale</title>');
-            printWindow.document.write('<style>');
-            printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333; }');
-            printWindow.document.write('h1, h2, h3 { margin-top: 20px; }');
-            printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }');
-            printWindow.document.write('table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
-            printWindow.document.write('table th { background-color: #f2f2f2; }');
-            printWindow.document.write('code { background: #e9ecef; padding: 2px 4px; border-radius: 3px; }');
-            printWindow.document.write('</style>');
-            printWindow.document.write('</head><body>');
-            printWindow.document.write(reportHTML);
-            printWindow.document.write('</body></html>');
-            printWindow.document.close();
-            
-            // Wait for resources to load before printing
-            setTimeout(() => {
-                printWindow.focus();
-                printWindow.print();
-            }, 250);
-        }
-
-        // Initialize and auto-refresh
         document.addEventListener('DOMContentLoaded', () => {
             loadMemory();
-            // Auto-refresh graph every 10 seconds without manual interaction
             setInterval(loadMemory, 10000);
         });
     </script>

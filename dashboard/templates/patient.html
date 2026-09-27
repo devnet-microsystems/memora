@@ -4,43 +4,99 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memora - Paziente</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { background-color: #f8f9fa; display: flex; flex-direction: column; min-height: 100vh; }
-        .hero { flex: 1; display: flex; align-items: center; justify-content: center; }
-        .mic-btn { width: 120px; height: 120px; border-radius: 50%; font-size: 3rem; display: flex; align-items: center; justify-content: center; margin: 0 auto; box-shadow: 0 10px 20px rgba(0,0,0,0.1); transition: all 0.3s ease; }
-        .mic-btn:hover { transform: scale(1.05); }
-        .mic-btn:active { transform: scale(0.95); }
-        .pulse { animation: pulse-animation 2s infinite; }
-        @keyframes pulse-animation {
-            0% { box-shadow: 0 0 0 0 rgba(2dc157, 0.7); }
-            70% { box-shadow: 0 0 0 30px rgba(45, 193, 87, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(45, 193, 87, 0); }
+        :root {
+            --bg-color: #FAF9F6;
+            --text-primary: #1A1A1A;
+            --action-color: #0056B3;
         }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-primary);
+            font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; 
+            margin: 0;
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh; 
+        }
+        *:focus-visible {
+            outline: 3px solid var(--action-color) !important;
+            outline-offset: 2px !important;
+        }
+        .hero { 
+            flex: 1; 
+            display: flex; 
+            flex-direction: column;
+            align-items: center; 
+            justify-content: flex-start; 
+            padding: 2rem 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .mic-btn { 
+            width: 180px; 
+            height: 180px; 
+            border-radius: 50%; 
+            font-size: 4rem; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            background-color: var(--action-color);
+            color: #FFFFFF;
+            border: none;
+            cursor: pointer;
+            margin-bottom: 2rem;
+        }
+        .mic-btn.active {
+            background-color: #004085;
+            box-shadow: 0 0 0 10px rgba(0, 86, 179, 0.3);
+        }
+        .mic-btn:disabled {
+            background-color: #595959;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+        #voice-placeholder {
+            font-size: 1.8rem;
+            font-weight: bold;
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        #conversation-box {
+            width: 100%;
+            font-size: 1.5rem;
+            line-height: 1.6;
+            padding: 1rem;
+            box-sizing: border-box;
+            border-top: 2px solid #595959;
+        }
+        .msg { margin-bottom: 1.5rem; }
+        .msg strong { display: block; font-size: 1.2rem; margin-bottom: 0.2rem; }
+        .msg.tu strong { color: #595959; }
+        .msg.memora strong { color: var(--action-color); }
+        .top-bar { padding: 1rem; text-align: right; }
+        .top-bar a { color: var(--action-color); font-size: 1.2rem; text-decoration: underline; font-weight: bold; }
     </style>
 </head>
 <body>
-    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
-        <div class="container-fluid">
-            <a class="navbar-brand" href="/">🧠 Memora</a>
-            <a href="/caregiver" class="btn btn-sm btn-outline-light">Vai alla Dashboard</a>
-        </div>
-    </nav>
+    <div class="top-bar">
+        <a href="/caregiver">Pannello Caregiver</a>
+    </div>
 
-    <div class="hero container py-5">
-        <div class="row w-100 justify-content-center text-center">
-            <div class="col-md-8 col-lg-6">
-                <div class="card shadow-lg border-0 rounded-4 p-4">
-                    <h2 class="mb-4 text-primary">Parla con Memora</h2>
-                    <button class="btn btn-danger mic-btn mb-4" id="btn-speak" onclick="startListening()">🎙️</button>
-                    <p class="lead text-muted mb-4" id="voice-placeholder">Tocca il microfono e fai una domanda.</p>
-                    
-                    <div id="conversation-box" class="p-3 bg-light rounded text-start" style="height: 250px; overflow-y: auto; font-size: 1.1rem;">
-                        <!-- Chat messages will appear here -->
-                    </div>
-                </div>
-            </div>
-        </div>
+    <div class="hero">
+        <h1>Parla con Memora</h1>
+        <button class="mic-btn" id="btn-speak" onclick="startListening()" aria-label="Premi per parlare">🎙️</button>
+        <div id="voice-placeholder">Tocca il microfono per parlare</div>
+        
+        <div id="conversation-box" aria-live="polite"></div>
     </div>
 
     <script>
@@ -50,16 +106,10 @@
 
         function appendMessage(sender, text) {
             const msgDiv = document.createElement('div');
-            msgDiv.className = 'mb-3 pb-2 border-bottom';
-            if (sender === 'Tu') {
-                msgDiv.innerHTML = `<strong>Tu:</strong> <span style="font-style: italic;">${text}</span>`;
-            } else if (sender === 'Memora') {
-                msgDiv.innerHTML = `<strong class="text-primary">Memora:</strong> <span class="text-primary">${text}</span>`;
-            } else {
-                msgDiv.innerHTML = `<span class="text-muted small">${text}</span>`;
-            }
+            msgDiv.className = 'msg ' + (sender === 'Tu' ? 'tu' : 'memora');
+            msgDiv.innerHTML = `<strong>${sender}</strong> <span>${text}</span>`;
             conversationBox.appendChild(msgDiv);
-            conversationBox.scrollTop = conversationBox.scrollHeight;
+            window.scrollTo(0, document.body.scrollHeight);
         }
 
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -71,11 +121,9 @@
             recognition.lang = 'it-IT';
             recognition.interimResults = false;
             recognition.continuous = false;
-            recognition.maxAlternatives = 1;
 
             recognition.onstart = () => {
-                btnSpeak.classList.replace('btn-danger', 'btn-success');
-                btnSpeak.classList.add('pulse');
+                btnSpeak.classList.add('active');
                 placeholder.innerText = "Ti sto ascoltando...";
             };
 
@@ -87,9 +135,8 @@
                 isProcessing = true;
                 recognition.stop();
                 btnSpeak.disabled = true;
-                btnSpeak.classList.remove('btn-success', 'btn-danger', 'pulse');
-                btnSpeak.classList.add('btn-secondary');
-                placeholder.innerText = "Sto pensando...";
+                btnSpeak.classList.remove('active');
+                placeholder.innerText = "Sto elaborando...";
 
                 const speechResult = result[0].transcript;
                 appendMessage('Tu', speechResult);
@@ -98,27 +145,23 @@
 
             recognition.onerror = (event) => {
                 if (event.error === 'aborted') return;
-                console.error("Speech error:", event.error);
-                appendMessage('Sistema', "Errore: " + event.error + ". Riprova.");
-                speakResponse("Non ho capito, riprova.");
+                appendMessage('Sistema', "Non ho sentito bene, riprova.");
+                speakResponse("Non ho sentito bene, riprova.");
             };
 
             recognition.onend = () => {
-                if (!isProcessing) {
-                    resetVoiceUI();
-                }
+                if (!isProcessing) resetVoiceUI();
             };
         } else {
-            placeholder.innerText = "API Vocale non supportata in questo browser.";
+            placeholder.innerText = "Voce non supportata nel browser.";
             btnSpeak.disabled = true;
         }
 
         function resetVoiceUI() {
             isProcessing = false;
             btnSpeak.disabled = false;
-            btnSpeak.classList.remove('btn-success', 'btn-secondary', 'pulse');
-            btnSpeak.classList.add('btn-danger');
-            placeholder.innerText = "Tocca il microfono e fai una domanda.";
+            btnSpeak.classList.remove('active');
+            placeholder.innerText = "Tocca il microfono per parlare";
         }
 
         function startListening() {
@@ -128,35 +171,19 @@
         }
 
         async function askAgent(text) {
-            const loadingId = 'loading-' + Date.now();
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = loadingId;
-            loadingDiv.className = 'text-muted small mb-2';
-            loadingDiv.innerText = "Memora sta digitando...";
-            conversationBox.appendChild(loadingDiv);
-            conversationBox.scrollTop = conversationBox.scrollHeight;
-
             try {
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ user_input: text })
                 });
-                
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.remove();
-                
-                if (!response.ok) throw new Error("Errore API");
+                if (!response.ok) throw new Error("API Error");
                 const data = await response.json();
-                
                 appendMessage('Memora', data.response);
                 speakResponse(data.response);
             } catch (error) {
-                console.error("Agent error:", error);
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.remove();
-                appendMessage('Sistema', "Errore di comunicazione con l'assistente.");
-                speakResponse("Si è verificato un errore di connessione.");
+                appendMessage('Sistema', "Errore di connessione.");
+                speakResponse("C'è un errore di connessione.");
             }
         }
 
@@ -166,8 +193,8 @@
                 const utterance = new SpeechSynthesisUtterance(text);
                 utterance.lang = 'it-IT';
                 utterance.rate = 0.9;
-                utterance.onend = () => { resetVoiceUI(); };
-                utterance.onerror = () => { resetVoiceUI(); };
+                utterance.onend = () => resetVoiceUI();
+                utterance.onerror = () => resetVoiceUI();
                 window.speechSynthesis.speak(utterance);
             } else {
                 resetVoiceUI();

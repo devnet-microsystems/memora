@@ -62,9 +62,12 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
             self.memory.add_node(flag_id, "flag", flag_content)
             self.notify_caregiver(flag_content)
 
+        # 3. Extract potential new facts as 'pending' using Nano
+        self._extract_pending_fact(user_input)
+
         # Retrieve context from memory
         context_results = self.memory.search(user_input, top_k=3)
-        context_text = "\n".join([f"- {res['content']}" for res in context_results if res.get('content') and res.get('type') != 'interaction'])
+        context_text = "\n".join([f"- {res['content']}" for res in context_results if res.get('content') and res.get('type') not in ['interaction', 'pending']])
         
         messages = [
             {
@@ -98,6 +101,28 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
         )
         messages = [{"role": "user", "content": prompt}]
         return self.nebius.chat(model=self.nebius.model_nano, messages=messages)
+
+    def _extract_pending_fact(self, user_input: str) -> None:
+        """
+        Extracts new factual information from the user input.
+        If a new fact is found, saves it as a 'pending' node for caregiver approval.
+        """
+        import time
+        prompt = (
+            "Se la seguente frase contiene un'informazione personale o un fatto da ricordare "
+            "(es. ho un nuovo dolore, mio nipote si chiama Marco, ho cambiato orario), "
+            "estrai un singolo fatto sintetico. Se non contiene fatti nuovi o rilevanti (es. saluti, "
+            "domande di routine, ringraziamenti), rispondi ESATTAMENTE con 'NESSUNO'.\n"
+            f"Frase: {user_input}"
+        )
+        try:
+            messages = [{"role": "user", "content": prompt}]
+            fact = self.nebius.chat(model=self.nebius.model_nano, messages=messages).strip()
+            if fact and "NESSUNO" not in fact.upper() and len(fact) > 5:
+                fact_id = f"pending_{int(time.time()*1000)}"
+                self.memory.add_node(fact_id, "pending", fact)
+        except Exception as e:
+            logger.error(f"Error extracting fact: {e}")
 
     def plan_complex_task(self, task: str) -> str:
         """
