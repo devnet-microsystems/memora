@@ -196,6 +196,21 @@ class MemoryGraph:
         results.sort(key=lambda x: x["score"], reverse=True)
         return results[:top_k]
 
+    def count_recent_similar_interactions(self, query: str, time_window_seconds: int = 3600, similarity_threshold: float = 0.85) -> int:
+        """
+        Count how many recent interactions are semantically similar to the query.
+        """
+        query_embedding = self.client.embed(query)
+        current_time = time.time()
+        count = 0
+        for node_id, data in self.graph.nodes(data=True):
+            if data.get("type") == "interaction" and (current_time - data.get("timestamp", 0)) <= time_window_seconds:
+                if "embedding" in data and data["embedding"]:
+                    score = self._cosine_similarity(query_embedding, data["embedding"])
+                    if score >= similarity_threshold:
+                        count += 1
+        return count
+
     def get_context(self, entity_id: str) -> Dict[str, Any]:
         """
         Retrieve a node and its direct neighbors to form context.
@@ -245,6 +260,10 @@ class MemoryGraph:
         logger.info(f"export_graph: {self.graph.number_of_nodes()} nodi, {self.graph.number_of_edges()} edges")
         nodes = []
         for n, data in self.graph.nodes(data=True):
+            node_type = data.get("type", "unknown")
+            if node_type == "interaction":
+                continue  # Hide raw interaction logs from the graph
+                
             content = data.get("content", n)
             label = content[:40] + "..." if len(content) > 40 else content
             nodes.append({

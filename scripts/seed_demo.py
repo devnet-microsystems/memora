@@ -2,7 +2,8 @@ import requests
 import time
 import json
 
-API_URL = "http://localhost:8000"
+import os
+API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 def seed():
     print("Seeding Memory Graph for Demo...")
@@ -45,6 +46,22 @@ def seed():
         else:
             print(f"Error adding edge {edge['source']}->{edge['target']}: {resp.text}")
         time.sleep(0.5)
+
+    print("\nSimulating anomaly pattern (repeated question on medication)...")
+    questions = [
+        "Ho già preso la pillola per la pressione?",
+        "Mi ricordi se ho preso la pillola per la pressione?",
+        "Devo prendere la pillola per la pressione?"
+    ]
+    
+    for q in questions:
+        print(f"Simulated user asks: '{q}'")
+        resp = requests.post(f"{API_URL}/chat", json={"user_input": q})
+        if resp.status_code == 200:
+            print("Response:", resp.json()["response"])
+        else:
+            print("Error:", resp.text)
+        time.sleep(1)
 
     print("\nDone seeding!")
 

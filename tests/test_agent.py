@@ -31,6 +31,7 @@ def agent(mock_dependencies):
 def test_respond(agent, mock_dependencies):
     """Test standard dialogue response."""
     mock_dependencies["memory"].search.return_value = [{"content": "Ricordo 1"}]
+    mock_dependencies["memory"].count_recent_similar_interactions.return_value = 0
     mock_dependencies["nebius"].chat.return_value = "Ciao, come stai?"
     
     response = agent.respond("Ciao")

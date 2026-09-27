@@ -48,9 +48,23 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
         Returns:
             The agent's text response.
         """
+        import time
+        # 1. Log interaction
+        interaction_id = f"interaction_{int(time.time()*1000)}"
+        self.memory.add_node(interaction_id, "interaction", user_input)
+        
+        # 2. Check for anomaly (repetitive questions)
+        repetition_count = self.memory.count_recent_similar_interactions(user_input, time_window_seconds=3600, similarity_threshold=0.85)
+        if repetition_count >= 3:
+            flag_id = f"flag_{int(time.time()*1000)}"
+            flag_content = f"⚠️ ANOMALIA RILEVATA: L'utente ha fatto la stessa domanda '{user_input}' {repetition_count} volte nell'ultima ora."
+            # Aggiungi il flag al grafo per la dashboard del caregiver
+            self.memory.add_node(flag_id, "flag", flag_content)
+            self.notify_caregiver(flag_content)
+
         # Retrieve context from memory
         context_results = self.memory.search(user_input, top_k=3)
-        context_text = "\n".join([f"- {res['content']}" for res in context_results if res.get('content')])
+        context_text = "\n".join([f"- {res['content']}" for res in context_results if res.get('content') and res.get('type') != 'interaction'])
         
         messages = [
             {
