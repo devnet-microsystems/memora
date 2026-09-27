@@ -26,7 +26,7 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
         <div class="container-fluid">
             <a class="navbar-brand" href="#">🧠 Memora - Caregiver Hub</a>
-            <a href="/patient" class="btn btn-outline-light btn-sm">Vista Paziente</a>
+            <a href="/patient" class="btn btn-outline-light btn-sm">Patient View</a>
         </div>
     </nav>
 
@@ -34,59 +34,59 @@
     <div id="wizard-modal" class="d-none">
         <div class="card w-100" style="max-width: 600px;">
             <div class="card-header bg-primary text-white d-flex justify-content-between">
-                <h5 class="mb-0">Configurazione Iniziale</h5>
+                <h5 class="mb-0">Initial Setup</h5>
                 <span id="wiz-progress" class="badge bg-light text-primary">Step 1 di 6</span>
             </div>
             <div class="card-body font-large">
                 
                 <!-- Step 1 -->
                 <div id="wiz-step-1" class="wizard-step">
-                    <label class="form-label fw-bold">Chi è la persona assistita?</label>
-                    <input type="text" id="w1-name" class="form-control mb-2" placeholder="Nome breve (es. maria)">
-                    <textarea id="w1-content" class="form-control" rows="2" placeholder="Dettagli (es. Maria, 78 anni, abita a Milano)"></textarea>
+                    <label class="form-label fw-bold">Who is the patient?</label>
+                    <input type="text" id="w1-name" class="form-control mb-2" placeholder="Short name (e.g. maria)">
+                    <textarea id="w1-content" class="form-control" rows="2" placeholder="Details (e.g. Maria, 78 years old, lives in Milan)"></textarea>
                 </div>
                 
                 <!-- Step 2 -->
                 <div id="wiz-step-2" class="wizard-step d-none">
-                    <label class="form-label fw-bold">Chi sono i familiari principali?</label>
-                    <input type="text" id="w2-name" class="form-control mb-2" placeholder="Nome (es. luca)">
-                    <input type="text" id="w2-content" class="form-control" placeholder="Dettagli (es. Luca, figlio)">
+                    <label class="form-label fw-bold">Who are the main family members?</label>
+                    <input type="text" id="w2-name" class="form-control mb-2" placeholder="Name (e.g. luca)">
+                    <input type="text" id="w2-content" class="form-control" placeholder="Details (e.g. Luca, son)">
                 </div>
 
                 <!-- Step 3 -->
                 <div id="wiz-step-3" class="wizard-step d-none">
-                    <label class="form-label fw-bold">Dove vive?</label>
+                    <label class="form-label fw-bold">Where do they live?</label>
                     <input type="text" id="w3-name" class="form-control mb-2" placeholder="ID (es. casa_milano)">
-                    <input type="text" id="w3-content" class="form-control" placeholder="Indirizzo esatto">
+                    <input type="text" id="w3-content" class="form-control" placeholder="Exact address">
                 </div>
 
                 <!-- Step 4 -->
                 <div id="wiz-step-4" class="wizard-step d-none">
-                    <label class="form-label fw-bold">Quali farmaci assume?</label>
-                    <input type="text" id="w4-name" class="form-control mb-2" placeholder="Nome breve (es. pillola_pressione)">
-                    <input type="text" id="w4-content" class="form-control" placeholder="Dettaglio e orario (es. 1 pastiglia alle 8:00)">
+                    <label class="form-label fw-bold">What medications do they take?</label>
+                    <input type="text" id="w4-name" class="form-control mb-2" placeholder="Short name (e.g. blood_pressure_pill)">
+                    <input type="text" id="w4-content" class="form-control" placeholder="Details and time (e.g. 1 pill at 8:00)">
                 </div>
 
                 <!-- Step 5 -->
                 <div id="wiz-step-5" class="wizard-step d-none">
-                    <label class="form-label fw-bold">Quali sono le abitudini quotidiane?</label>
+                    <label class="form-label fw-bold">What are the daily routines?</label>
                     <input type="text" id="w5-name" class="form-control mb-2" placeholder="ID (es. passeggiata)">
-                    <input type="text" id="w5-content" class="form-control" placeholder="Dettaglio (es. Passeggiata al parco alle 10)">
+                    <input type="text" id="w5-content" class="form-control" placeholder="Details (e.g. Walk in the park at 10)">
                 </div>
 
                 <!-- Step 6 -->
                 <div id="wiz-step-6" class="wizard-step d-none">
-                    <label class="form-label fw-bold">Chi è il caregiver principale?</label>
+                    <label class="form-label fw-bold">Who is the primary caregiver?</label>
                     <input type="text" id="w6-name" class="form-control mb-2" placeholder="ID (es. giulia_badante)">
-                    <input type="text" id="w6-content" class="form-control" placeholder="Nome e telefono per emergenze">
+                    <input type="text" id="w6-content" class="form-control" placeholder="Name and emergency phone">
                 </div>
 
             </div>
             <div class="card-footer d-flex justify-content-between">
-                <button class="btn btn-secondary" onclick="skipWizard()">Salta, configuro dopo</button>
+                <button class="btn btn-secondary" onclick="skipWizard()">Skip, configure later</button>
                 <div>
-                    <button class="btn btn-outline-primary me-2" id="btn-wiz-prev" onclick="prevWizardStep()" style="display:none;">Indietro</button>
-                    <button class="btn btn-primary" id="btn-wiz-next" onclick="nextWizardStep()">Avanti</button>
+                    <button class="btn btn-outline-primary me-2" id="btn-wiz-prev" onclick="prevWizardStep()" style="display:none;">Back</button>
+                    <button class="btn btn-primary" id="btn-wiz-next" onclick="nextWizardStep()">Next</button>
                 </div>
             </div>
         </div>
@@ -100,54 +100,54 @@
                 <!-- Aggiungi Informazione -->
                 <div class="card">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0 fw-bold">Aggiungi informazione</h5>
+                        <h5 class="mb-0 fw-bold">Add Information</h5>
                     </div>
                     <div class="card-body">
                         <form id="form-add-node" onsubmit="handleManualAdd(event)">
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Tipo di Nodo</label>
+                                    <label class="form-label">Node Type</label>
                                     <select id="add-type" class="form-select" required>
-                                        <option value="person">Persona</option>
-                                        <option value="place">Luogo</option>
+                                        <option value="person">Person</option>
+                                        <option value="place">Place</option>
                                         <option value="routine">Routine</option>
-                                        <option value="med">Farmaco</option>
-                                        <option value="event">Evento</option>
+                                        <option value="med">Medication</option>
+                                        <option value="event">Event</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Nome breve (senza spazi)</label>
-                                    <input type="text" id="add-id" class="form-control" placeholder="es. maria" required pattern="^\S+$" title="Nessuno spazio vuoto consentito">
+                                    <label class="form-label">Short name (no spaces)</label>
+                                    <input type="text" id="add-id" class="form-control" placeholder="es. maria" required pattern="^\S+$" title="No spaces allowed">
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label class="form-label">Contenuto descrittivo</label>
-                                <textarea id="add-content" class="form-control" rows="2" placeholder="es. Maria, 68 anni, vive sola a Milano" required></textarea>
+                                <label class="form-label">Descriptive Content</label>
+                                <textarea id="add-content" class="form-control" rows="2" placeholder="e.g. Maria, 68 years old, lives alone in Milan" required></textarea>
                             </div>
                             
                             <div class="row mb-3">
                                 <div class="col-md-6">
-                                    <label class="form-label">Relazione (Opzionale)</label>
+                                    <label class="form-label">Relation (Optional)</label>
                                     <select id="add-relation" class="form-select">
-                                        <option value="">-- Nessuna --</option>
-                                        <option value="nonna_di">nonna_di</option>
-                                        <option value="madre_di">madre_di</option>
-                                        <option value="figlio_di">figlio_di</option>
-                                        <option value="vive_a">vive_a</option>
-                                        <option value="assume">assume</option>
-                                        <option value="abitudine">abitudine</option>
-                                        <option value="altro">altro</option>
+                                        <option value="">-- None --</option>
+                                        <option value="grandmother_of">grandmother_of</option>
+                                        <option value="mother_of">mother_of</option>
+                                        <option value="son_of">son_of</option>
+                                        <option value="lives_in">lives_in</option>
+                                        <option value="takes">takes</option>
+                                        <option value="habit">habit</option>
+                                        <option value="other">other</option>
                                     </select>
                                 </div>
                                 <div class="col-md-6">
-                                    <label class="form-label">Nodo collegato (Opzionale)</label>
+                                    <label class="form-label">Linked Node (Optional)</label>
                                     <select id="add-target" class="form-select">
-                                        <option value="">-- Seleziona nodo --</option>
+                                        <option value="">-- Select node --</option>
                                     </select>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center">
-                                <button type="submit" id="btn-add-node" class="btn btn-primary">Aggiungi al grafo</button>
+                                <button type="submit" id="btn-add-node" class="btn btn-primary">Add to Graph</button>
                                 <span id="add-feedback" class="ms-3 fw-bold"></span>
                             </div>
                         </form>
@@ -157,8 +157,8 @@
                 <!-- Memory Graph -->
                 <div class="card">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0 fw-bold">Grafo di Memoria</h5>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="loadMemory()">Aggiorna Ora</button>
+                        <h5 class="mb-0 fw-bold">Memory Graph</h5>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="loadMemory()">Refresh Now</button>
                     </div>
                     <div class="card-body p-0">
                         <div id="network-graph"></div>
@@ -172,7 +172,7 @@
                 <!-- Flags Panel -->
                 <div class="card" id="flag-panel">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0 fw-bold">Allarmi & Anomalie</h5>
+                        <h5 class="mb-0 fw-bold">Alerts & Anomalies</h5>
                     </div>
                     <ul class="list-group list-group-flush" id="flag-list"></ul>
                 </div>
@@ -180,7 +180,7 @@
                 <!-- Pending Nodes Panel -->
                 <div class="card">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0 fw-bold">Da Approvare (In attesa)</h5>
+                        <h5 class="mb-0 fw-bold">Pending Approvals</h5>
                     </div>
                     <ul class="list-group list-group-flush" id="pending-list"></ul>
                 </div>
@@ -188,12 +188,12 @@
                 <!-- Report Section -->
                 <div class="card">
                     <div class="card-header bg-white">
-                        <h5 class="mb-0 fw-bold">Report Settimanale</h5>
+                        <h5 class="mb-0 fw-bold">Weekly Report</h5>
                     </div>
                     <div class="card-body">
-                        <button class="btn btn-primary w-100 mb-3" id="btn-report" onclick="generateReport()">Genera Report Ultra</button>
+                        <button class="btn btn-primary w-100 mb-3" id="btn-report" onclick="generateReport()">Generate Ultra Report</button>
                         <div id="report-content" class="bg-light p-3 border rounded" style="max-height: 250px; overflow-y: auto; font-size: 14px;">
-                            Clicca su Genera per creare l'analisi.
+                            Click Generate to create the analysis.
                         </div>
                     </div>
                 </div>
@@ -224,7 +224,7 @@
         // --- FORM AGGIUNGI INFORMAZIONE ---
         function populateTargetSelect(nodes) {
             const select = document.getElementById('add-target');
-            select.innerHTML = '<option value="">-- Seleziona nodo --</option>';
+            select.innerHTML = '<option value="">-- Select node --</option>';
             nodes.filter(n => n.group !== 'interaction' && n.group !== 'flag').forEach(n => {
                 select.innerHTML += `<option value="${n.id}">${n.id} (${n.group})</option>`;
             });
@@ -241,7 +241,7 @@
             const btn = document.getElementById('btn-add-node');
             const feedback = document.getElementById('add-feedback');
             
-            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Salvataggio...';
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Saving...';
             btn.disabled = true;
             feedback.innerHTML = '';
 
@@ -252,7 +252,7 @@
                     headers:{'Content-Type':'application/json'},
                     body: JSON.stringify({id: id, type: type, content: content})
                 });
-                if(!resNode.ok) throw new Error("Errore API Nodo");
+                if(!resNode.ok) throw new Error("Node API Error");
 
                 // Salva Relazione se presente
                 if(relation && target) {
@@ -261,16 +261,16 @@
                         headers:{'Content-Type':'application/json'},
                         body: JSON.stringify({source: id, target: target, relation: relation})
                     });
-                    if(!resEdge.ok) throw new Error("Errore API Arco");
+                    if(!resEdge.ok) throw new Error("Edge API Error");
                 }
 
-                feedback.innerHTML = `<span class="text-success">Aggiunto: ${id}</span>`;
+                feedback.innerHTML = `<span class="text-success">Added: ${id}</span>`;
                 document.getElementById('form-add-node').reset();
                 loadMemory(); // Refresh immediato
             } catch (err) {
                 feedback.innerHTML = `<span class="text-danger">Errore: ${err.message}</span>`;
             } finally {
-                btn.innerHTML = 'Aggiungi al grafo';
+                btn.innerHTML = 'Add to Graph';
                 btn.disabled = false;
                 setTimeout(() => feedback.innerHTML = '', 3000);
             }
@@ -294,7 +294,7 @@
             document.getElementById('wiz-progress').innerText = `Step ${step} di 6`;
             
             document.getElementById('btn-wiz-prev').style.display = step > 1 ? 'inline-block' : 'none';
-            document.getElementById('btn-wiz-next').innerText = step === 6 ? 'Salva Configurazione' : 'Avanti';
+            document.getElementById('btn-wiz-next').innerText = step === 6 ? 'Save Configuration' : 'Next';
             
             localStorage.setItem('wiz_step', step);
         }
@@ -323,7 +323,7 @@
                 currentWizStep++;
                 showWizStep(currentWizStep);
             } else {
-                alert("Setup completato!");
+                alert("Setup complete!");
                 skipWizard();
                 loadMemory();
             }
@@ -365,18 +365,18 @@
                             <span>${n.label}</span>
                             <div class="btn-group">
                                 <button class="btn btn-sm btn-success" onclick="approveNode('${n.id}', '${n.label.replace(/'/g, "\\'")}')">Appr</button>
-                                <button class="btn btn-sm btn-danger" onclick="rejectNode('${n.id}')">Scarta</button>
+                                <button class="btn btn-sm btn-danger" onclick="rejectNode('${n.id}')">Reject</button>
                             </div>
                         </li>
                     `;
                 } else if (n.group === 'flag') {
                     hasFlags = true;
-                    flagList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center bg-danger text-white border-danger"><strong>${n.label}</strong> <button class="btn btn-sm btn-light text-danger" onclick="rejectNode('${n.id}')">Risolto</button></li>`;
+                    flagList.innerHTML += `<li class="list-group-item d-flex justify-content-between align-items-center bg-danger text-white border-danger"><strong>${n.label}</strong> <button class="btn btn-sm btn-light text-danger" onclick="rejectNode('${n.id}')">Resolved</button></li>`;
                 }
             });
 
-            if(pendingList.innerHTML === '') pendingList.innerHTML = '<li class="list-group-item text-muted">Nessun fatto in sospeso.</li>';
-            if(flagList.innerHTML === '') flagList.innerHTML = '<li class="list-group-item text-muted">Nessuna anomalia rilevata.</li>';
+            if(pendingList.innerHTML === '') pendingList.innerHTML = '<li class="list-group-item text-muted">No pending facts.</li>';
+            if(flagList.innerHTML === '') flagList.innerHTML = '<li class="list-group-item text-muted">No anomalies detected.</li>';
 
             if(hasFlags) flagPanel.classList.add('border-danger');
             else flagPanel.classList.remove('border-danger');
@@ -408,15 +408,15 @@
         async function generateReport() {
             const btn = document.getElementById('btn-report');
             const content = document.getElementById('report-content');
-            btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Elaborazione Ultra...';
+            btn.disabled = true; btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Processing Ultra...';
             try {
                 const response = await fetch('/api/report', { method: 'POST' });
                 const data = await response.json();
                 content.innerHTML = marked.parse(data.report);
             } catch (e) {
-                content.innerHTML = "<span class='text-danger'>Errore durante la generazione.</span>";
+                content.innerHTML = "<span class='text-danger'>Error during generation.</span>";
             } finally {
-                btn.disabled = false; btn.innerHTML = "Genera Report Ultra";
+                btn.disabled = false; btn.innerHTML = "Generate Ultra Report";
             }
         }
 

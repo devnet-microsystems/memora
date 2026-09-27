@@ -38,8 +38,8 @@ def test_respond(agent, mock_dependencies):
     
     # Verify memory was searched for context
     mock_dependencies["memory"].search.assert_called_once_with("Ciao", top_k=3)
-    # Verify Nebius was called
-    mock_dependencies["nebius"].chat.assert_called_once()
+    # Verify Nebius was called twice (once for Nano fact extraction, once for Super response)
+    assert mock_dependencies["nebius"].chat.call_count == 2
     assert response == "Ciao, come stai?"
 
 def test_quick_intent(agent, mock_dependencies):
@@ -67,12 +67,12 @@ def test_plan_complex_task(agent, mock_dependencies):
 def test_check_anomaly(agent, mock_dependencies):
     """Test anomaly detection logic."""
     # Test positive anomaly
-    mock_dependencies["nebius"].chat.return_value = "SI, c'è un'anomalia"
+    mock_dependencies["nebius"].chat.return_value = "YES, there is an anomaly"
     is_anomalous = agent.check_anomaly(["Dove sono?", "Dove sono?", "Chi sei?"])
     assert is_anomalous is True
     
     # Test negative anomaly
-    mock_dependencies["nebius"].chat.return_value = "NO, tutto regolare"
+    mock_dependencies["nebius"].chat.return_value = "NO, everything is fine"
     is_anomalous = agent.check_anomaly(["Ciao", "Che ore sono?"])
     assert is_anomalous is False
 

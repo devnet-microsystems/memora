@@ -84,4 +84,4 @@ def test_generate_report(client_and_mock):
     mock_agent.nebius.chat.assert_called_once()
     args, kwargs = mock_agent.nebius.chat.call_args
     assert kwargs["model"] == "ultra"
-    assert "report settimanale" in kwargs["messages"][0]["content"].lower()
+    assert "weekly report" in kwargs["messages"][0]["content"].lower()

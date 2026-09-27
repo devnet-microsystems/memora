@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Memora - Paziente</title>
+    <title>Memora - Patient View</title>
     <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -88,13 +88,13 @@
 </head>
 <body>
     <div class="top-bar">
-        <a href="/caregiver">Pannello Caregiver</a>
+        <a href="/caregiver">Caregiver Dashboard</a>
     </div>
 
     <div class="hero">
-        <h1>Parla con Memora</h1>
-        <button class="mic-btn" id="btn-speak" onclick="startListening()" aria-label="Premi per parlare">🎙️</button>
-        <div id="voice-placeholder">Tocca il microfono per parlare</div>
+        <h1>Talk to Memora</h1>
+        <button class="mic-btn" id="btn-speak" onclick="startListening()" aria-label="Press to speak">🎙️</button>
+        <div id="voice-placeholder">Tap the microphone to speak</div>
         
         <div id="conversation-box" aria-live="polite"></div>
     </div>
@@ -106,7 +106,7 @@
 
         function appendMessage(sender, text) {
             const msgDiv = document.createElement('div');
-            msgDiv.className = 'msg ' + (sender === 'Tu' ? 'tu' : 'memora');
+            msgDiv.className = 'msg ' + (sender === 'You' ? 'tu' : 'memora');
             msgDiv.innerHTML = `<strong>${sender}</strong> <span>${text}</span>`;
             conversationBox.appendChild(msgDiv);
             window.scrollTo(0, document.body.scrollHeight);
@@ -118,13 +118,13 @@
 
         if (SpeechRecognition) {
             recognition = new SpeechRecognition();
-            recognition.lang = 'it-IT';
+            recognition.lang = 'en-US'; // Or keep it-IT if they want to speak Italian but read English. Let's keep Italian voice recognition but English UI.
             recognition.interimResults = false;
             recognition.continuous = false;
 
             recognition.onstart = () => {
                 btnSpeak.classList.add('active');
-                placeholder.innerText = "Ti sto ascoltando...";
+                placeholder.innerText = "Listening...";
             };
 
             recognition.onresult = async (event) => {
@@ -136,17 +136,17 @@
                 recognition.stop();
                 btnSpeak.disabled = true;
                 btnSpeak.classList.remove('active');
-                placeholder.innerText = "Sto elaborando...";
+                placeholder.innerText = "Processing...";
 
                 const speechResult = result[0].transcript;
-                appendMessage('Tu', speechResult);
+                appendMessage('You', speechResult);
                 await askAgent(speechResult);
             };
 
             recognition.onerror = (event) => {
                 if (event.error === 'aborted') return;
-                appendMessage('Sistema', "Non ho sentito bene, riprova.");
-                speakResponse("Non ho sentito bene, riprova.");
+                appendMessage('System', "Didn't catch that, please try again.");
+                speakResponse("I didn't catch that, please try again.");
             };
 
             recognition.onend = () => {
@@ -161,7 +161,7 @@
             isProcessing = false;
             btnSpeak.disabled = false;
             btnSpeak.classList.remove('active');
-            placeholder.innerText = "Tocca il microfono per parlare";
+            placeholder.innerText = "Tap the microphone to speak";
         }
 
         function startListening() {
@@ -182,8 +182,8 @@
                 appendMessage('Memora', data.response);
                 speakResponse(data.response);
             } catch (error) {
-                appendMessage('Sistema', "Errore di connessione.");
-                speakResponse("C'è un errore di connessione.");
+                appendMessage('System', "Connection error.");
+                speakResponse("There was a connection error.");
             }
         }
 
@@ -191,7 +191,7 @@
             if ('speechSynthesis' in window) {
                 window.speechSynthesis.cancel();
                 const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'it-IT';
+                utterance.lang = 'en-US'; // assuming the agent now speaks English
                 utterance.rate = 0.9;
                 utterance.onend = () => resetVoiceUI();
                 utterance.onerror = () => resetVoiceUI();

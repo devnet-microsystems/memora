@@ -16,19 +16,19 @@ class MemoraAgent:
     Main agent coordinating dialogue, memory, and external tools.
     """
 
-    SYSTEM_PROMPT = """Sei Memora, un assistente personale privato per persone con deficit cognitivo lieve.
-Regole FERREE:
-1. NON dare MAI consigli medici.
-2. NON diagnosticare MAI nulla.
-3. Fai UNA SOLA domanda per volta.
-4. Tono calmo, rassicurante, frasi brevi e semplici.
-5. Se l'utente appare confuso, disorientato o non risponde coerentemente, chiedi aiuto al caregiver usando lo strumento notify_caregiver.
+    SYSTEM_PROMPT = """You are Memora, a private personal assistant for people with mild cognitive impairment.
+STRICT Rules:
+1. NEVER give medical advice.
+2. NEVER diagnose anything.
+3. Ask ONLY ONE question at a time.
+4. Keep a calm, reassuring tone, with short and simple sentences.
+5. If the user seems confused, disoriented, or responds incoherently, ask the caregiver for help using the notify_caregiver tool.
 
-Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
-- memory_search(query): per cercare informazioni passate sull'utente.
-- memory_add(id, type, content): per salvare nuove informazioni importanti.
-- tavily_search(query): per cercare informazioni sul web (es. farmacie, guardia medica).
-- notify_caregiver(message): per inviare un avviso al caregiver.
+You have the following tools available (indicate their use if necessary):
+- memory_search(query): to search past information about the user.
+- memory_add(id, type, content): to save new important information.
+- tavily_search(query): to search information on the web (e.g. pharmacies, medical guards).
+- notify_caregiver(message): to send an alert to the caregiver.
 """
 
     def __init__(self) -> None:
@@ -57,7 +57,7 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
         repetition_count = self.memory.count_recent_similar_interactions(user_input, time_window_seconds=3600, similarity_threshold=0.85)
         if repetition_count >= 3:
             flag_id = f"flag_{int(time.time()*1000)}"
-            flag_content = f"⚠️ ANOMALIA RILEVATA: L'utente ha fatto la stessa domanda '{user_input}' {repetition_count} volte nell'ultima ora."
+            flag_content = f"⚠️ ANOMALY DETECTED: The user asked the same question '{user_input}' {repetition_count} times in the last hour."
             # Aggiungi il flag al grafo per la dashboard del caregiver
             self.memory.add_node(flag_id, "flag", flag_content)
             self.notify_caregiver(flag_content)
@@ -72,7 +72,7 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
         messages = [
             {
                 "role": "system", 
-                "content": self.SYSTEM_PROMPT + f"\n\nContesto recuperato dalla memoria:\n{context_text}"
+                "content": self.SYSTEM_PROMPT + f"\n\nContext retrieved from memory:\n{context_text}"
             },
             {"role": "user", "content": user_input}
         ]
@@ -95,9 +95,9 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
             The classified intent as a string.
         """
         prompt = (
-            "Classifica l'intento del seguente messaggio in una di queste categorie: "
-            "[SALUTO, RICHIESTA_AIUTO, INFORMAZIONE, AZIONE, CONFUSIONE, ALTRO]. "
-            f"Messaggio: {user_input}"
+            "Classify the intent of the following message into one of these categories: "
+            "[GREETING, HELP_REQUEST, INFORMATION, ACTION, CONFUSION, OTHER]. "
+            f"Message: {user_input}"
         )
         messages = [{"role": "user", "content": prompt}]
         return self.nebius.chat(model=self.nebius.model_nano, messages=messages)
@@ -109,16 +109,16 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
         """
         import time
         prompt = (
-            "Se la seguente frase contiene un'informazione personale o un fatto da ricordare "
-            "(es. ho un nuovo dolore, mio nipote si chiama Marco, ho cambiato orario), "
-            "estrai un singolo fatto sintetico. Se non contiene fatti nuovi o rilevanti (es. saluti, "
-            "domande di routine, ringraziamenti), rispondi ESATTAMENTE con 'NESSUNO'.\n"
-            f"Frase: {user_input}"
+            "If the following sentence contains personal information or a fact to remember "
+            "(e.g., I have a new pain, my nephew is named Marco, I changed my schedule), "
+            "extract a single synthetic fact. If it does not contain new or relevant facts (e.g. greetings, "
+            "routine questions, thanks), answer EXACTLY with 'NONE'.\n"
+            f"Sentence: {user_input}"
         )
         try:
             messages = [{"role": "user", "content": prompt}]
             fact = self.nebius.chat(model=self.nebius.model_nano, messages=messages).strip()
-            if fact and "NESSUNO" not in fact.upper() and len(fact) > 5:
+            if fact and "NONE" not in fact.upper() and len(fact) > 5:
                 fact_id = f"pending_{int(time.time()*1000)}"
                 self.memory.add_node(fact_id, "pending", fact)
         except Exception as e:
@@ -135,7 +135,7 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
             The step-by-step plan.
         """
         prompt = (
-            "Sei un pianificatore esperto. Suddividi il seguente task in "
+            "You are an expert planner. Break down the following task into "
             f"sotto-obiettivi semplici e sicuri per l'utente.\nTask: {task}"
         )
         messages = [{"role": "user", "content": prompt}]
@@ -156,14 +156,14 @@ Hai a disposizione i seguenti strumenti (se necessario indicane l'uso):
             
         interactions_text = "\n".join(recent_interactions)
         prompt = (
-            "Analizza le seguenti interazioni recenti dell'utente. C'è segno di "
-            "ripetizione anomala, pause strane, deviazioni marcate dalla routine o grave confusione? "
-            "Rispondi SOLO con 'SI' o 'NO'.\n"
-            f"Interazioni:\n{interactions_text}"
+            "Analyze the following recent interactions of the user. Is there a sign of "
+            "anomalous repetition, strange pauses, marked deviations from the routine or severe confusion? "
+            "Answer ONLY with 'YES' or 'NO'.\n"
+            f"Interactions:\n{interactions_text}"
         )
         messages = [{"role": "user", "content": prompt}]
         response = self.nebius.chat(model=self.nebius.model_ultra, messages=messages).strip().upper()
-        return "SI" in response
+        return "YES" in response
 
     # --- Tool Implementations for Function Calling ---
 

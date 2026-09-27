@@ -154,17 +154,17 @@ async def generate_report():
         nodes = graph_data.get("nodes", [])
         
         if not nodes:
-            memory_text = "Nessun ricordo registrato."
+            memory_text = "No memories recorded."
         else:
             memory_text = "\n".join([f"- [{n.get('group', 'unknown')}] {n.get('label', '')}" for n in nodes])
             
         prompt = (
-            "Genera un report settimanale sintetico sullo stato cognitivo e "
-            "comportamentale dell'utente basandoti *esclusivamente* sui seguenti ricordi estratti dalla memoria.\n"
-            "Non inventare dati. Se mancano informazioni, dillo esplicitamente.\n"
-            "Non dire 'non ho accesso alla memoria' perché ti sto passando il contesto qui sotto.\n"
-            "Mantieni un tono professionale da caregiver.\n\n"
-            "RICORDI IN MEMORIA:\n"
+            "Generate a concise weekly report on the cognitive and behavioral status of the user "
+            "based *exclusively* on the following memories extracted from memory.\n"
+            "Do not invent data. If information is missing, state it explicitly.\n"
+            "Do not say 'I do not have access to memory' because I am passing the context below.\n"
+            "Maintain a professional caregiver tone.\n\n"
+            "MEMORIES IN MEMORY:\n"
             f"{memory_text}"
         )
         messages = [{"role": "user", "content": prompt}]
