@@ -96,6 +96,14 @@ Tavily is integrated as an external tool accessible via the agent. It is specifi
 **We are explicitly submitting Memora for the "Best Use of Tavily" Bonus Award.**  
 Mild Cognitive Impairment (MCI) patients can get easily disoriented or experience sudden panic, particularly regarding their medication or minor health issues. Memora uses Tavily to instantly ground the LLM with live, hyper-local data. For example, if a patient is confused at night, the agent transparently executes `tavily_tool.find_pharmacy("Milano")` to retrieve open pharmacies ("Farmacia S. Teresa. corso Magenta, 96. tel. +39 02 48195412") without hallucinating a closed or non-existent business. This turns a generic AI into a reliable, localized emergency companion. (See `tests/test_tavily_tool.py::test_best_use_of_tavily_scenario` for the verifiable integration).
 
+## Limitations & Honest Assessment
+We believe in building transparent AI, especially for healthcare. Memora is a hackathon prototype and we explicitly state the following limitations:
+- **Not a Diagnostic Tool:** Memora is a companion app, not a medical device. It cannot and should not be used to diagnose, treat, or cure any medical condition.
+- **Not Clinically Validated:** The conversational patterns and UI/UX have been designed following general best practices for cognitive accessibility, but have *not* been validated in clinical trials.
+- **Simulated Data Only:** All testing, demonstrations, and graphs were generated using simulated personas (e.g., "Maria"). No real patient data has been processed by this application.
+- **Heuristic Anomaly Detection:** The repetition detection is currently heuristic (based on cosine similarity of embeddings over a rolling time window) rather than using an LLM to dynamically reason over the entire behavioral graph, in order to maintain deterministic reliability and low latency.
+- **Scaling Costs:** While routing simple tasks to Nemotron Nano saves money, the heavy reasoning required by Nemotron Ultra for daily/weekly caregiver reports scales linearly with usage and could become expensive at scale without further prompt optimization.
+
 ## Feedback on Nebius and NVIDIA
 - **Latency**: Nano: 1.4s, Super: 2.7s, Ultra: 14s
 - **Cost**: Nano: $0.000144, Super: $0.0015, Ultra: $0.002
