@@ -11,8 +11,13 @@ app = Flask(__name__)
 API_URL = os.getenv("API_URL", "http://localhost:8000")
 
 @app.route("/")
-def index():
-    """Render the main dashboard."""
+def landing():
+    """Render the landing page."""
+    return render_template("landing.html")
+
+@app.route("/caregiver")
+def caregiver():
+    """Render the main caregiver dashboard."""
     # Try to get health status from FastAPI backend
     status = "offline"
     try:
@@ -23,6 +28,11 @@ def index():
         pass
 
     return render_template("index.html", api_url=API_URL, status=status)
+
+@app.route("/patient")
+def patient():
+    """Render the patient voice interface."""
+    return render_template("patient.html", api_url=API_URL)
 
 @app.route("/api/memory")
 def get_memory():
@@ -38,6 +48,24 @@ def delete_memory(node_id):
     """Proxy for deleting a memory node."""
     try:
         resp = requests.delete(f"{API_URL}/memory/{node_id}", timeout=5)
+        return jsonify(resp.json()), resp.status_code
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/memory", methods=["POST"])
+def post_memory():
+    """Proxy for adding a memory node."""
+    try:
+        resp = requests.post(f"{API_URL}/memory", json=request.json, timeout=30)
+        return jsonify(resp.json()), resp.status_code
+    except requests.RequestException as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/api/memory/edge", methods=["POST"])
+def post_memory_edge():
+    """Proxy for adding a memory edge."""
+    try:
+        resp = requests.post(f"{API_URL}/memory/edge", json=request.json, timeout=30)
         return jsonify(resp.json()), resp.status_code
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 500

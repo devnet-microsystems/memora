@@ -6,11 +6,26 @@
     <title>Memora Dashboard - Caregiver View</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <style>
         body { background-color: #f8f9fa; }
         .navbar-brand { font-weight: bold; }
         #network-graph { width: 100%; height: 400px; border: 1px solid #dee2e6; border-radius: 5px; background: white; }
         .card { margin-bottom: 20px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+        
+        #report-content {
+            max-width: 900px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            font-size: 14px;
+            line-height: 1.6;
+            color: #212529;
+        }
+        #report-content h1, #report-content h2, #report-content h3 { margin-top: 20px; color: #212529; }
+        #report-content table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }
+        #report-content table th, #report-content table td { border: 1px solid #ddd; padding: 8px; }
+        #report-content code { background: #e9ecef; padding: 2px 4px; border-radius: 3px; }
     </style>
 </head>
 <body>
@@ -41,18 +56,7 @@
                     </div>
                 </div>
 
-                <!-- Voice Assistant -->
-                <div class="card">
-                    <div class="card-header bg-white d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0">Assistente Vocale</h5>
-                        <button class="btn btn-sm btn-danger" id="btn-speak" onclick="startListening()">🎙️ Parla</button>
-                    </div>
-                    <div class="card-body">
-                        <div id="conversation-box" class="p-2 bg-light rounded" style="max-height: 300px; overflow-y: auto;">
-                            <div class="text-muted small mb-2 text-center" id="voice-placeholder">Premi "Parla" e fai una domanda.</div>
-                        </div>
-                    </div>
-                </div>
+                <!-- Voice Assistant removed from Caregiver view - available in Patient mode -->
 
                 <!-- Feature Toggles Placeholder -->
                 <div class="card">
@@ -94,7 +98,10 @@
                 <div class="card">
                     <div class="card-header bg-white d-flex justify-content-between align-items-center">
                         <h5 class="mb-0">Report Settimanale</h5>
-                        <button class="btn btn-sm btn-primary" id="btn-report" onclick="generateReport()">Genera</button>
+                        <div>
+                            <button class="btn btn-sm btn-secondary me-2" onclick="printReport()">Scarica PDF</button>
+                            <button class="btn btn-sm btn-primary" id="btn-report" onclick="generateReport()">Genera</button>
+                        </div>
                     </div>
                     <div class="card-body" style="max-height: 300px; overflow-y: auto;">
                         <div id="report-content" class="text-muted small">
@@ -213,7 +220,7 @@
                 const data = await response.json();
                 
                 // Format response
-                content.innerHTML = data.report.replace(/\\n/g, '<br>');
+                content.innerHTML = marked.parse(data.report);
             } catch (error) {
                 console.error("Failed to generate report:", error);
                 content.innerHTML = '<span class="text-danger">Errore. Assicurati che FastAPI e l\'API Nebius siano raggiungibili.</span>';
@@ -223,143 +230,41 @@
             }
         }
 
-        // Voice Interaction Logic
-        const btnSpeak = document.getElementById('btn-speak');
-        const conversationBox = document.getElementById('conversation-box');
-
-        function appendMessage(sender, text) {
-            const placeholder = document.getElementById('voice-placeholder');
-            if (placeholder) placeholder.remove();
-
-            const msgDiv = document.createElement('div');
-            msgDiv.className = 'mb-2 pb-2 border-bottom';
-            if (sender === 'Tu') {
-                msgDiv.innerHTML = `<strong>Tu:</strong> <span style="font-style: italic;">${text}</span>`;
-            } else if (sender === 'Memora') {
-                msgDiv.innerHTML = `<strong class="text-primary">Memora:</strong> <span class="text-primary">${text}</span>`;
-            } else {
-                msgDiv.innerHTML = `<span class="text-muted small">${text}</span>`;
+        function printReport() {
+            const reportHTML = document.getElementById('report-content').innerHTML;
+            if (reportHTML.includes("Clicca su Genera") || reportHTML.includes("Invocazione Nemotron")) {
+                alert("Genera prima il report.");
+                return;
             }
-            conversationBox.appendChild(msgDiv);
-            conversationBox.scrollTop = conversationBox.scrollHeight;
+            
+            const printWindow = window.open('', '', 'height=600,width=800');
+            printWindow.document.write('<html><head><title>Memora Report Settimanale</title>');
+            printWindow.document.write('<style>');
+            printWindow.document.write('body { font-family: Arial, sans-serif; padding: 20px; line-height: 1.6; color: #333; }');
+            printWindow.document.write('h1, h2, h3 { margin-top: 20px; }');
+            printWindow.document.write('table { border-collapse: collapse; width: 100%; margin-bottom: 15px; }');
+            printWindow.document.write('table th, table td { border: 1px solid #ddd; padding: 8px; text-align: left; }');
+            printWindow.document.write('table th { background-color: #f2f2f2; }');
+            printWindow.document.write('code { background: #e9ecef; padding: 2px 4px; border-radius: 3px; }');
+            printWindow.document.write('</style>');
+            printWindow.document.write('</head><body>');
+            printWindow.document.write(reportHTML);
+            printWindow.document.write('</body></html>');
+            printWindow.document.close();
+            
+            // Wait for resources to load before printing
+            setTimeout(() => {
+                printWindow.focus();
+                printWindow.print();
+            }, 250);
         }
 
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        let isProcessing = false;
-
-        if (SpeechRecognition) {
-            recognition = new SpeechRecognition();
-            recognition.lang = 'it-IT';
-            recognition.interimResults = false;
-            recognition.continuous = false;
-            recognition.maxAlternatives = 1;
-
-            recognition.onstart = () => {
-                btnSpeak.classList.replace('btn-danger', 'btn-success');
-                btnSpeak.innerText = "Ascolto...";
-            };
-
-            recognition.onresult = async (event) => {
-                if (isProcessing) return;
-                const result = event.results[event.results.length - 1];
-                if (!result.isFinal) return;
-
-                isProcessing = true;
-                recognition.stop();
-                btnSpeak.disabled = true;
-                btnSpeak.classList.remove('btn-success', 'btn-danger');
-                btnSpeak.classList.add('btn-secondary');
-                btnSpeak.innerText = "Elaborazione...";
-
-                const speechResult = result[0].transcript;
-                appendMessage('Tu', speechResult);
-                await askAgent(speechResult);
-            };
-
-            recognition.onerror = (event) => {
-                if (event.error === 'aborted') return;
-                console.error("Speech error:", event.error);
-                appendMessage('Sistema', "Errore: " + event.error + ". Riprova.");
-                speakResponse("Non ho capito, riprova.");
-            };
-
-            recognition.onend = () => {
-                if (!isProcessing) {
-                    resetVoiceUI();
-                }
-            };
-        } else {
-            appendMessage('Sistema', "API Vocale non supportata in questo browser.");
-            btnSpeak.disabled = true;
-        }
-
-        function resetVoiceUI() {
-            isProcessing = false;
-            btnSpeak.disabled = false;
-            btnSpeak.classList.remove('btn-success', 'btn-secondary');
-            btnSpeak.classList.add('btn-danger');
-            btnSpeak.innerText = "🎙️ Parla";
-        }
-
-        function startListening() {
-            if (recognition && !btnSpeak.disabled && !isProcessing) {
-                recognition.start();
-            }
-        }
-
-        async function askAgent(text) {
-            const loadingId = 'loading-' + Date.now();
-            const loadingDiv = document.createElement('div');
-            loadingDiv.id = loadingId;
-            loadingDiv.className = 'text-muted small mb-2';
-            loadingDiv.innerText = "Memora sta digitando...";
-            conversationBox.appendChild(loadingDiv);
-            conversationBox.scrollTop = conversationBox.scrollHeight;
-
-            try {
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ user_input: text })
-                });
-                
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.remove();
-                
-                if (!response.ok) throw new Error("Errore API");
-                const data = await response.json();
-                
-                appendMessage('Memora', data.response);
-                speakResponse(data.response);
-                
-                // Refresh memory graph in case the agent wrote to it
-                loadMemory();
-            } catch (error) {
-                console.error("Agent error:", error);
-                const loader = document.getElementById(loadingId);
-                if (loader) loader.remove();
-                appendMessage('Sistema', "Errore di comunicazione con l'assistente.");
-                speakResponse("Si è verificato un errore di connessione.");
-            }
-        }
-
-        function speakResponse(text) {
-            if ('speechSynthesis' in window) {
-                window.speechSynthesis.cancel();
-                const utterance = new SpeechSynthesisUtterance(text);
-                utterance.lang = 'it-IT';
-                utterance.rate = 0.9;
-                utterance.onend = () => { resetVoiceUI(); };
-                utterance.onerror = () => { resetVoiceUI(); };
-                window.speechSynthesis.speak(utterance);
-            } else {
-                resetVoiceUI();
-            }
-        }
-
-        // Initialize
-        document.addEventListener('DOMContentLoaded', loadMemory);
+        // Initialize and auto-refresh
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMemory();
+            // Auto-refresh graph every 10 seconds without manual interaction
+            setInterval(loadMemory, 10000);
+        });
     </script>
 </body>
 </html>
