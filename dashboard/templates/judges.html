@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memora - Judges Dashboard</title>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/theme.css">
+    <style>
+        body { 
+            padding: 40px; 
+            max-width: 1000px; 
+            margin: 0 auto; 
+        }
+        .section {
+            margin-bottom: 30px;
+        }
+        pre.mermaid { text-align: center; background: transparent; padding: 0; }
+        .step {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 15px;
+            background: #f8fafc;
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .step-num {
+            background: var(--primary);
+            color: white;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+    </style>
+    <!-- vis.js for memory graph -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <!-- Mermaid.js for architecture diagram -->
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+<script src="/static/util.js"></script></head>
+<body>
+    <span id="db-encrypted-badge" class="badge" style="float: right;">DB Encrypted: Checking...</span>
+    <h1 style="color: var(--primary); margin-bottom: 30px;">Memora — Technical Overview for Judges</h1>
+
+    <div class="card section">
+        <h2 class="card-title">1. 60-Second Overview</h2>
+        <p><strong>What is Memora?</strong> A private AI assistant acting as a second brain.<br>
+        <strong>For whom?</strong> People with Mild Cognitive Impairment (MCI) and their caregivers.<br>
+        <em style="color: var(--primary); font-size: 1.2rem; display: block; margin-top: 10px;">"The user forgets. The system doesn't."</em></p>
+    </div>
+
+    <div class="card section">
+        <h2 class="card-title">2. Try it in 60 seconds</h2>
+        
+        <div class="step">
+            <div class="step-num">1</div>
+            <div style="flex: 1;">Open the Patient App and say (or type): <strong>"Where is the nearest pharmacy?"</strong>. Memora will route this to Tavily search seamlessly.</div>
+            <a href="/patient" target="_blank" class="btn btn-primary">Open Patient App</a>
+        </div>
+        
+        <div class="step">
+            <div class="step-num">2</div>
+            <div style="flex: 1;">Ask 3 times: <strong>"Did I take my pill?"</strong>. Memora detects the repetition and logs confusion.</div>
+        </div>
+        
+        <div class="step">
+            <div class="step-num">3</div>
+            <div style="flex: 1;">Open the Caregiver Dashboard to see the newly generated Alert and the updated Memory Graph.</div>
+            <a href="/caregiver" target="_blank" class="btn btn-primary" style="background: var(--success); border-color: var(--success);">Open Caregiver Dashboard</a>
+        </div>
+    </div>
+
+    <div class="card section">
+        <h2 class="card-title">3. What is Real vs Simulated</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>LLMs & Orchestration</strong></td>
+                    <td><span class="badge badge-success">REAL</span></td>
+                    <td>Using Nebius Token Factory (Nano, Super, Ultra, Qwen embeddings). Real multi-model routing based on intent.</td>
+                </tr>
+                <tr>
+                    <td><strong>Web Search</strong></td>
+                    <td><span class="badge badge-success">REAL</span></td>
+                    <td>Tavily API used for real-time external world queries.</td>
+                </tr>
+                <tr>
+                    <td><strong>Memory Graph DB</strong></td>
+                    <td><span class="badge badge-success">REAL</span></td>
+                    <td>Local SQLite encrypted with SQLCipher. Real RAG over the graph.</td>
+                </tr>
+                <tr>
+                    <td><strong>Patient History</strong></td>
+                    <td><span class="badge badge-orange">SIMULATED</span></td>
+                    <td>"Maria" is a simulated persona. 7 days of past interaction logs are seeded on boot to populate the caregiver graphs.</td>
+                </tr>
+                <tr>
+                    <td><strong>Medical Data</strong></td>
+                    <td><span class="badge badge-orange">SIMULATED</span></td>
+                    <td>No real clinical data. Memora is strictly <em>not</em> a medical device.</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="card section">
+        <h2 class="card-title">4. Architecture Diagram</h2>
+        <pre class="mermaid">
+        flowchart LR
+            App["Patient App (Browser)"] -->|HTTPS| API["FastAPI (Python)"]
+            Dash["Caregiver Dashboard"] <-->|HTTPS| API
+            API --> Nebius["Nebius Token Factory"]
+            API --> Tavily["Tavily Search API"]
+            API <--> DB[("SQLCipher Memory Graph")]
+        </pre>
+    </div>
+
+    <div class="card section">
+        <h2 class="card-title">5. LIVE Metrics (Nebius Token Factory)</h2>
+        <table id="metrics-table">
+            <thead>
+                <tr>
+                    <th>Model</th>
+                    <th>Calls</th>
+                    <th>Avg Latency</th>
+                    <th>Last Latency</th>
+                    <th>Est. Cost</th>
+                </tr>
+            </thead>
+            <tbody id="metrics-body">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted);">Loading metrics...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+        fetch('/api/health')
+            .then(r => r.json())
+            .then(d => {
+                const badge = document.getElementById('db-encrypted-badge');
+                if(d.encrypted) {
+                    badge.innerText = "DB Encrypted: YES 🔒";
+                    badge.classList.add('badge-success');
+                } else {
+                    badge.innerText = "DB Encrypted: NO ⚠️";
+                    badge.classList.add('badge-danger');
+                }
+            }).catch(e => console.error(e));
+
+        function loadMetrics() {
+            fetch('/api/usage')
+                .then(r => r.json())
+                .then(d => {
+                    const tbody = document.getElementById('metrics-body');
+                    tbody.textContent = '';
+                    if(!d.latency_by_model || Object.keys(d.latency_by_model).length === 0) {
+                        tbody.appendChild(el('tr', {}, el('td', {colSpan: '5', style: 'text-align: center; color: var(--text-muted);'}, 'not measured yet')));
+                        return;
+                    }
+                    
+                    for (const [model, stats] of Object.entries(d.latency_by_model)) {
+                        const tr = el('tr', {}, [
+                            el('td', {style: 'font-weight: 500;'}, model),
+                            el('td', {}, stats.calls),
+                            el('td', {}, stats.avg_ms ? (stats.avg_ms/1000).toFixed(2) + 's' : 'N/A'),
+                            el('td', {}, stats.last_ms ? (stats.last_ms/1000).toFixed(2) + 's' : 'N/A'),
+                            el('td', {}, 'See total')
+                        ]);
+                        tbody.appendChild(tr);
+                    }
+                    
+                    const trT = el('tr', {style: 'background-color: #f8fafc; font-weight: bold;'}, [
+                        el('td', {}, 'Total Cost (Session)'),
+                        el('td', {colSpan: '3'}),
+                        el('td', {}, `$${d.estimated_cost_usd ? d.estimated_cost_usd.toFixed(6) : '0.000000'}`)
+                    ]);
+                    tbody.appendChild(trT);
+                }).catch(e => {
+                    document.getElementById('metrics-body').appendChild(el('tr', {}, el('td', {colSpan: '5', style: 'text-align: center; color: var(--danger);'}, 'Failed to load metrics')));
+                });
+        }
+        
+        document.addEventListener('DOMContentLoaded', () => {
+            loadMetrics();
+            setInterval(loadMetrics, 10000);
+        });
+    </script>
+</body>
+</html>

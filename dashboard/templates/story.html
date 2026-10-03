@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Life Book</title>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-color: #FAF9F6;
+            --text-primary: #1A1A1A;
+            --action-color: #0056B3;
+        }
+        body { 
+            background-color: var(--bg-color); 
+            color: var(--text-primary);
+            font-family: 'Atkinson Hyperlegible', system-ui, sans-serif; 
+            margin: 0;
+            padding: 40px;
+            display: flex; 
+            flex-direction: column; 
+            align-items: center;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            background-color: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 2rem;
+            text-align: center;
+            color: var(--action-color);
+        }
+        .timeline-item {
+            margin-bottom: 30px;
+            padding-bottom: 30px;
+            border-bottom: 2px solid #eee;
+        }
+        .timeline-date {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--action-color);
+            margin-bottom: 10px;
+        }
+        .timeline-content {
+            font-size: 1.8rem;
+            line-height: 1.6;
+            color: var(--text-primary);
+        }
+        .btn-print {
+            background-color: var(--action-color);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 1.5rem;
+            font-weight: bold;
+            border-radius: 8px;
+            cursor: pointer;
+            margin-bottom: 30px;
+            transition: background-color 0.2s;
+        }
+        .btn-print:hover {
+            background-color: #004085;
+        }
+        
+        @media print {
+            body {
+                background-color: white;
+                padding: 0;
+            }
+            .container {
+                box-shadow: none;
+                padding: 0;
+                max-width: 100%;
+            }
+            .btn-print {
+                display: none;
+            }
+            .timeline-item {
+                page-break-inside: avoid;
+            }
+        }
+    </style>
+<script src="/static/util.js"></script></head>
+<body>
+
+    <button class="btn-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+
+    <div class="container">
+        <h1 id="book-title">Life Book</h1>
+        <div id="timeline-container">
+            <div style="font-size: 1.5rem; color: #595959; text-align: center;">Loading...</div>
+        </div>
+    </div>
+
+    <script>
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.toString().replace(/[&<>'"]/g, 
+                tag => ({
+                    '&': '&amp;',
+                    '<': '&lt;',
+                    '>': '&gt;',
+                    "'": '&#39;',
+                    '"': '&quot;'
+                }[tag] || tag)
+            );
+        }
+        async function loadStory() {
+            try {
+                // Get patient name
+                const todayResp = await fetch('/api/today?lang=en');
+                if (todayResp.ok) {
+                    const todayData = await todayResp.json();
+                    if (todayData.patient_name) {
+                        document.getElementById('book-title').textContent = todayData.patient_name + "'s Life Book";
+                    }
+                }
+
+                // Get timeline
+                const resp = await fetch('/api/timeline');
+                const data = await resp.json();
+                
+                const container = document.getElementById('timeline-container');
+                container.textContent = '';
+                
+                if (data.length === 0) {
+                    container.appendChild(el('div', {style: 'font-size: 1.5rem; color: #595959; text-align: center;'}, 'No stories yet.'));
+                    return;
+                }
+
+                data.forEach(item => {
+                    const evt = el('div', {className: 'timeline-item'}, [
+                        el('div', {className: 'timeline-date'}, item.event_date || 'Memory'),
+                        el('div', {className: 'timeline-content'}, item.content)
+                    ]);
+                    container.appendChild(evt);
+                });
+            } catch (err) {
+                console.error("Failed to load story", err);
+                document.getElementById('timeline-container').appendChild(el('div', {style: 'color: red; text-align: center;'}, 'Failed to load.'));
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', loadStory);
+    </script>
+</body>
+</html>

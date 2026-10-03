@@ -1,0 +1,11 @@
+.env
+*.pem
+__pycache__/
+.venv/
+logs/
+node_modules/
+data/*.db
+*_push_sub.json
+.DS_Store
+memora-mobile/node_modules
+.git

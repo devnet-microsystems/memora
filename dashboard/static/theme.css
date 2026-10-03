@@ -1,0 +1,80 @@
+:root {
+    --bg-color: #FBF8F3;
+    --text-primary: #1B1B1F;
+    --primary: #1F5FBF;
+    --success: #1E7B3A;
+    --danger: #B3261E;
+    --surface: #FFFFFF;
+    --border: #D9D4CB;
+    
+    --bs-body-bg: var(--bg-color);
+    --bs-body-color: var(--text-primary);
+    --bs-primary: var(--primary);
+    --bs-success: var(--success);
+    --bs-danger: var(--danger);
+    --bs-border-color: var(--border);
+    --bs-font-sans-serif: 'Atkinson Hyperlegible', system-ui, sans-serif;
+}
+
+body {
+    background-color: var(--bg-color) !important;
+    color: var(--text-primary) !important;
+    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
+}
+
+.card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    margin-bottom: 20px;
+    padding: 20px;
+}
+
+.card-title {
+    font-weight: bold !important;
+    color: var(--primary) !important;
+    margin-bottom: 15px;
+    font-size: 1.5rem;
+}
+
+.badge {
+    padding: 5px 10px !important;
+    border-radius: 20px !important;
+    font-weight: 500 !important;
+}
+
+.badge-primary { background: var(--primary) !important; color: white !important; }
+.badge-success { background: var(--success) !important; color: white !important; }
+.badge-danger { background: var(--danger) !important; color: white !important; }
+.badge-orange { background-color: #fef3c7 !important; color: #92400e !important; }
+
+.btn {
+    border-radius: 12px !important;
+    font-weight: bold !important;
+    padding: 10px 20px !important;
+}
+
+.btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: white !important;
+}
+.btn-primary:hover {
+    background-color: #174895 !important;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+th, td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+}
+th {
+    font-weight: bold;
+    color: var(--primary);
+    background-color: #f5f3ef;
+}

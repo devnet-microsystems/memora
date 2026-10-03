@@ -1,0 +1,47 @@
+services:
+  # -----------------------------------------------------
+  # 1. Backend Service (FastAPI)
+  # -----------------------------------------------------
+  - type: web
+    name: memora-backend
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "./scripts/start_backend.sh"
+    envVars:
+      - key: NEBIUS_API_KEY
+        sync: false
+      - key: TAVILY_API_KEY
+        sync: false
+      - key: DB_KEY
+        sync: false
+      - key: DB_PATH
+        value: "./data/memora.db"
+      - key: MEMORA_API_KEY
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+
+  # -----------------------------------------------------
+  # 2. Dashboard Service (Flask)
+  # -----------------------------------------------------
+  - type: web
+    name: memora-dashboard
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn dashboard.app:app --bind 0.0.0.0:$PORT"
+    envVars:
+      - key: API_URL
+        fromService:
+          type: web
+          name: memora-backend
+          envVarKey: RENDER_EXTERNAL_URL
+      - key: MEMORA_API_KEY
+        sync: false
+      - key: CAREGIVER_USER
+        sync: false
+      - key: CAREGIVER_PASSWORD
+        sync: false
+      - key: DEMO_PUBLIC_READONLY
+        sync: false
+      - key: MAX_DAILY_LLM_CALLS
+        sync: false

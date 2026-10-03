@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Memora - The user forgets. The system doesn't.</title>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/theme.css">
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            align-items: center;
+            padding: 40px 20px;
+            box-sizing: border-box;
+        }
+        .container {
+            max-width: 800px;
+            width: 100%;
+            text-align: center;
+            flex: 1;
+        }
+        h1 {
+            font-size: 3rem;
+            color: var(--primary);
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            font-size: 1.5rem;
+            color: var(--text-primary);
+            margin-bottom: 40px;
+            font-weight: bold;
+        }
+        .desc {
+            font-size: 1.2rem;
+            margin-bottom: 40px;
+        }
+        .actions {
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 60px;
+            flex-wrap: wrap;
+        }
+        .btn-large {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface);
+            border: 2px solid var(--primary);
+            border-radius: 16px;
+            padding: 30px;
+            width: 250px;
+            text-decoration: none;
+            color: var(--primary);
+            font-size: 1.5rem;
+            font-weight: bold;
+            transition: transform 0.2s, background 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+        }
+        .btn-large:hover {
+            transform: translateY(-5px);
+            background: #f0f7ff;
+        }
+        .btn-large span {
+            font-size: 3rem;
+            margin-bottom: 10px;
+        }
+        .btn-caregiver {
+            border-color: var(--success);
+            color: var(--success);
+        }
+        .btn-caregiver:hover {
+            background: #f0fdf4;
+        }
+        
+        .how-it-works {
+            display: flex;
+            gap: 20px;
+            text-align: left;
+            margin-bottom: 50px;
+            flex-wrap: wrap;
+        }
+        .feature {
+            flex: 1;
+            min-width: 200px;
+            background: var(--surface);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+        }
+        .feature h3 {
+            color: var(--primary);
+            margin-top: 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        footer {
+            margin-top: auto;
+            text-align: center;
+            color: #666;
+            font-size: 0.9rem;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            width: 100%;
+            max-width: 800px;
+        }
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+    </style>
+<script src="/static/util.js"></script></head>
+<body>
+    <div class="container">
+        <h1>🧠 Memora</h1>
+        <div class="subtitle">The user forgets. The system doesn't.</div>
+        <p class="desc">Memora is an AI companion that supports people with cognitive impairment by remembering facts, tracking habits, and alerting caregivers when needed.</p>
+        
+        <div class="actions">
+            <a href="/patient" class="btn-large">
+                <span>🎙️</span>
+                Patient App
+            </a>
+            <a href="/caregiver" class="btn-large btn-caregiver">
+                <span>📊</span>
+                Caregiver
+            </a>
+            <a href="/judges" class="btn-large" style="border-color: var(--danger); color: var(--danger);">
+                <span>🏆</span>
+                Judges
+            </a>
+        </div>
+        
+        <h2>How it works</h2>
+        <div class="how-it-works">
+            <div class="feature">
+                <h3>💬 Talks</h3>
+                <p>A simple, zero-friction voice interface tailored for accessibility and cognitive comfort.</p>
+            </div>
+            <div class="feature">
+                <h3>🧠 Remembers</h3>
+                <p>Builds a persistent memory graph extracting facts, habits, and preferences in real time.</p>
+            </div>
+            <div class="feature">
+                <h3>🆘 Alerts</h3>
+                <p>Notifies caregivers of missed medications, confusion, or explicit distress signals instantly.</p>
+            </div>
+        </div>
+    </div>
+    
+    <footer>
+        <div><a href="https://github.com/memora" target="_blank">GitHub Repository</a> | <strong>Not a medical device</strong> | <em>Simulated demo data</em></div>
+    </footer>
+</body>
+</html>

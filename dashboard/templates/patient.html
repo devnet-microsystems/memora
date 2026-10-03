@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>Memora</title>
+    <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap" rel="stylesheet">
+    <link rel="manifest" href="/static/manifest.json">
+    <meta name="theme-color" content="#FBF8F3">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <link rel="stylesheet" href="/static/patient.css">
+<script src="/static/util.js"></script></head>
+<body>
+    <div id="network-error">No connection. Please call your caregiver or 112.</div>
+
+    <div class="container">
+        <div class="header">
+            <span id="header-greeting">Hello</span>
+            <select class="lang-select" id="lang-selector" onchange="changeLang(this.value)" aria-label="Select Language">
+                <option value="en">EN</option>
+                <option value="it">IT</option>
+            </select>
+        </div>
+
+        <!-- Today Card -->
+        <div class="card">
+            <div style="text-align: center; margin-bottom: 20px;">
+                <h2 id="today-weekday" style="margin: 0; font-size: 32px; color: var(--primary);"></h2>
+                <div id="today-date" style="font-size: 20px; color: var(--text-primary); margin-bottom: 5px;"></div>
+                <div id="today-greeting" style="font-size: 24px; font-weight: bold;"></div>
+            </div>
+            <div id="today-list"></div>
+        </div>
+
+        <!-- Microphone Orb -->
+        <div class="orb-container">
+            <button id="btn-speak" class="orb state-idle" onclick="startListening()" aria-label="Tap to talk">
+                🎙️
+            </button>
+            <div id="orb-status-text" class="orb-status-text" aria-live="polite">Tap to talk</div>
+        </div>
+
+        <!-- Conversation -->
+        <div class="chat-latest" id="chat-latest" aria-live="polite"></div>
+        <button class="btn-history" id="btn-history" onclick="toggleHistory()">Show History</button>
+        <div id="chat-history"></div>
+
+        <!-- AAC Grid -->
+        <div class="aac-grid" id="aac-grid"></div>
+
+        <!-- Diary -->
+        <button id="btn-diary" class="btn-diary" onclick="toggleDiaryMode()">📖 Tell me a story</button>
+        <div id="diary-banner" style="display: none;">
+            <span>Diary Mode Active</span>
+            <button class="btn-history" onclick="toggleDiaryMode()" style="width: auto; margin:0; border-color: #0369a1; color: #0369a1;">Stop</button>
+        </div>
+    </div>
+
+    <!-- SOS -->
+    <div class="sos-disclaimer">Memora is not an emergency service. In an emergency call 112.</div>
+    <div class="sos-bar">
+        <button id="btn-sos" class="sos-btn" onclick="sendSOS()">🆘 Call for help</button>
+        <div id="sos-message" class="sos-msg">Alert sent, waiting for confirmation</div>
+    </div>
+
+    <!-- Med Reminder Overlay -->
+    <div id="med-reminder-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.85); z-index: 1000; align-items: center; justify-content: center; padding: 20px; box-sizing: border-box;">
+        <div id="med-reminder-card" style="background-color: var(--surface); padding: 30px; border-radius: 20px; text-align: center; width: 100%; max-width: 400px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div style="font-size: 64px; margin-bottom: 20px;">💊</div>
+            <h2 id="med-reminder-title" style="font-size: 32px; margin-top: 0; margin-bottom: 15px; color: var(--danger);">Time for your medicine</h2>
+            <div id="med-reminder-name" style="font-size: 24px; font-weight: bold; margin-bottom: 30px;"></div>
+            
+            <div id="med-reminder-buttons" style="display: flex; flex-direction: column; gap: 15px;">
+                <button onclick="confirmReminder('confirmed')" style="min-height: 64px; font-size: 24px; background-color: var(--success); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold;">I took it</button>
+                <button onclick="confirmReminder('snoozed')" style="min-height: 64px; font-size: 24px; background-color: #f59e0b; color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold;">Not yet</button>
+                <button onclick="confirmReminder('unsure')" style="min-height: 64px; font-size: 24px; background-color: var(--primary); color: white; border: none; border-radius: 12px; cursor: pointer; font-weight: bold;">I'm not sure</button>
+            </div>
+            
+            <div id="med-reminder-feedback" style="display: none; font-size: 24px; font-weight: bold; margin-top: 20px; color: var(--text-primary);"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentLang = localStorage.getItem('memora_lang');
+        if (!currentLang) {
+            currentLang = navigator.language.startsWith('it') ? 'it' : 'en';
+            localStorage.setItem('memora_lang', currentLang);
+        }
+        document.documentElement.lang = currentLang;
+        document.getElementById('lang-selector').value = currentLang;
+
+        function changeLang(lang) {
+            localStorage.setItem('memora_lang', lang);
+            location.reload();
+        }
+
+        const preferredLang = currentLang === 'it' ? 'it-IT' : 'en-US';
+        const txtIdle = currentLang === 'it' ? "Tocca per parlare" : "Tap to talk";
+        const txtListen = currentLang === 'it' ? "Ti ascolto" : "I'm listening";
+        const txtThink = currentLang === 'it' ? "Sto pensando..." : "Thinking...";
+        const txtSpeak = currentLang === 'it' ? "Rispondo..." : "Speaking...";
+        
+        const netErr = document.getElementById('network-error');
+
+        function showError() {
+            netErr.style.display = 'block';
+        }
+        function hideError() {
+            netErr.style.display = 'none';
+        }
+
+        // SOS
+        const btnSos = document.getElementById('btn-sos');
+        const sosMessage = document.getElementById('sos-message');
+        
+        if (currentLang === 'it') {
+            btnSos.textContent = '🆘 Chiedi Aiuto';
+            sosMessage.textContent = "Allarme inviato, in attesa...";
+        }
+
+        async function sendSOS() {
+            try {
+                btnSos.style.display = 'none';
+                sosMessage.style.display = 'flex';
+                const response = await fetch('/api/sos', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ patient_id: 'maria', type: 'sos' })
+                });
+                
+                if (response.ok) {
+                    hideError();
+                    sosMessage.textContent = currentLang === 'it' ? "Aiuto in arrivo" : "Help is on the way";
+                    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
+                    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
+                    audio.play().catch(e => {});
+                    
+                    setTimeout(() => {
+                        sosMessage.style.display = 'none';
+                        btnSos.style.display = 'flex';
+                        sosMessage.textContent = currentLang === 'it' ? "Allarme inviato, in attesa..." : "Alert sent, waiting for confirmation";
+                    }, 10000);
+                } else {
+                    throw new Error("Network");
+                }
+            } catch (error) {
+                showError();
+                sosMessage.style.display = 'none';
+                btnSos.style.display = 'flex';
+            }
+        }
+
+        // Voice Orb
+        const btnSpeak = document.getElementById('btn-speak');
+        const orbStatus = document.getElementById('orb-status-text');
+        orbStatus.textContent = txtIdle;
+
+        function setOrbState(state, text) {
+            btnSpeak.className = 'orb state-' + state;
+            orbStatus.textContent = text;
+        }
+
+        // Chat Box
+        const chatLatest = document.getElementById('chat-latest');
+        const chatHistory = document.getElementById('chat-history');
+        const btnHistory = document.getElementById('btn-history');
+
+        if (currentLang === 'it') {
+            btnHistory.textContent = "Mostra Cronologia";
+        }
+
+        function toggleHistory() {
+            if (chatHistory.style.display === 'flex') {
+                chatHistory.style.display = 'none';
+                btnHistory.textContent = currentLang === 'it' ? "Mostra Cronologia" : "Show History";
+            } else {
+                chatHistory.style.display = 'flex';
+                btnHistory.textContent = currentLang === 'it' ? "Nascondi Cronologia" : "Hide History";
+            }
+        }
+
+        function appendMessage(sender, text) {
+            // Append to history
+            const msgDiv = document.createElement('div');
+            msgDiv.style.marginBottom = '10px';
+            const strong = document.createElement('strong');
+            strong.textContent = sender + ': ';
+            strong.style.color = sender === 'Memora' ? 'var(--primary)' : 'var(--text-primary)';
+            const span = document.createElement('span');
+            span.style.whiteSpace = 'pre-wrap';
+            span.textContent = text;
+            msgDiv.appendChild(strong);
+            msgDiv.appendChild(span);
+            chatHistory.appendChild(msgDiv);
+            
+            // Set latest
+            chatLatest.textContent = text;
+            if (sender === 'Memora') {
+                chatLatest.style.color = 'var(--primary)';
+            } else {
+                chatLatest.style.color = 'var(--text-primary)';
+            }
+        }
+
+        // Diary Mode
+        let diaryMode = false;
+        let diarySessionId = "";
+        
+        async function toggleDiaryMode() {
+            diaryMode = !diaryMode;
+            const btnDiary = document.getElementById('btn-diary');
+            const diaryBanner = document.getElementById('diary-banner');
+            
+            if (diaryMode) {
+                diarySessionId = "sess_" + Date.now();
+                btnDiary.style.display = 'none';
+                diaryBanner.style.display = 'flex';
+                chatHistory.textContent = '';
+                chatLatest.textContent = '';
+                setOrbState('idle', txtIdle);
+            } else {
+                btnDiary.style.display = 'flex';
+                diaryBanner.style.display = 'none';
+                try {
+                    await fetch('/api/diary/end', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify({session_id: diarySessionId})
+                    });
+                } catch (e) { console.error(e); }
+                diarySessionId = "";
+                chatHistory.textContent = '';
+                chatLatest.textContent = '';
+            }
+        }
+
+        // Speech Recognition
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isProcessing = false;
+
+        if (SpeechRecognition) {
+            recognition = new SpeechRecognition();
+            recognition.lang = preferredLang;
+            recognition.interimResults = false;
+            recognition.continuous = false;
+
+            recognition.onstart = () => {
+                setOrbState('listening', txtListen);
+            };
+
+            recognition.onresult = async (event) => {
+                if (isProcessing) return;
+                const result = event.results[event.results.length - 1];
+                if (!result.isFinal) return;
+
+                isProcessing = true;
+                recognition.stop();
+                setOrbState('thinking', txtThink);
+
+                const speechResult = result[0].transcript;
+                appendMessage(currentLang === 'it' ? 'Tu' : 'You', speechResult);
+                await askAgent(speechResult);
+            };
+
+            recognition.onerror = (event) => {
+                if (event.error === 'aborted') return;
+                const txt = currentLang === 'it' ? "Non ho capito, riprova." : "Didn't catch that, please try again.";
+                appendMessage('System', txt);
+                speakResponse(txt);
+            };
+
+            recognition.onend = () => {
+                if (!isProcessing) resetVoiceUI();
+            };
+        } else {
+            setOrbState('idle', currentLang === 'it' ? "Voce non supportata" : "Voice not supported");
+            btnSpeak.disabled = true;
+        }
+
+        function resetVoiceUI() {
+            isProcessing = false;
+            btnSpeak.disabled = false;
+            setOrbState('idle', txtIdle);
+        }
+
+        function startListening() {
+            if (recognition && !btnSpeak.disabled && !isProcessing) {
+                recognition.start();
+            }
+        }
+
+        async function askAgent(text) {
+            try {
+                let endpoint = '/api/chat';
+                let bodyData = { user_input: text, lang: currentLang };
+                
+                if (diaryMode) {
+                    endpoint = '/api/diary/turn';
+                    bodyData = { session_id: diarySessionId, text: text, lang: currentLang };
+                }
+
+                const response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(bodyData)
+                });
+                
+                if (!response.ok) throw new Error("API Error");
+                hideError();
+                const data = await response.json();
+                
+                if (data.reply) {
+                    appendMessage('Memora', data.reply);
+                    speakResponse(data.reply);
+                    
+                    if (diaryMode && (data.reply.includes("Let's take a break") || data.reply.includes("Facciamo una pausa"))) {
+                        toggleDiaryMode();
+                    }
+                } else if (data.response) {
+                    appendMessage('Memora', data.response);
+                    speakResponse(data.response);
+                }
+            } catch (error) {
+                showError();
+                const txt = currentLang === 'it' ? "Errore di connessione." : "Connection error.";
+                appendMessage('System', txt);
+                speakResponse("There was a connection error.");
+            }
+        }
+
+        function speakResponse(text) {
+            setOrbState('speaking', txtSpeak);
+            if ('speechSynthesis' in window) {
+                window.speechSynthesis.cancel();
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = preferredLang;
+                utterance.rate = 0.9;
+                utterance.onend = () => resetVoiceUI();
+                utterance.onerror = () => resetVoiceUI();
+                window.speechSynthesis.speak(utterance);
+            } else {
+                resetVoiceUI();
+            }
+        }
+
+        async function loadAAC() {
+            try {
+                const response = await fetch('/api/aac');
+                if(!response.ok) throw new Error();
+                hideError();
+                const caaNodes = await response.json();
+                
+                let labels = [];
+                if (caaNodes.length > 0) {
+                    labels = caaNodes.map(n => n.content);
+                } else {
+                    labels = currentLang === 'it' 
+                        ? ["💧 Ho sete", "💊 Medicine?", "🚽 Bagno", "📞 Chiama casa"]
+                        : ["💧 I'm thirsty", "💊 Medicine?", "🚽 Bathroom", "📞 Call family"];
+                }
+                
+                const grid = document.getElementById('aac-grid');
+                grid.textContent = '';
+                labels.forEach(label => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-aac';
+                    btn.textContent = label;
+                    btn.setAttribute('aria-label', label);
+                    btn.onclick = () => {
+                        appendMessage(currentLang === 'it' ? 'Tu' : 'You', label);
+                        askAgent(label);
+                    };
+                    grid.appendChild(btn);
+                });
+            } catch (err) {
+                console.error("Failed to load AAC", err);
+            }
+        }
+
+        async function loadToday() {
+            try {
+                const response = await fetch('/api/today?lang=' + currentLang);
+                if (!response.ok) throw new Error();
+                hideError();
+                const data = await response.json();
+                
+                document.getElementById('today-weekday').textContent = data.weekday;
+                document.getElementById('today-date').textContent = data.date_label;
+                const nameStr = data.patient_name ? ' ' + data.patient_name : '';
+                document.getElementById('header-greeting').textContent = (currentLang === 'it' ? 'Ciao' : 'Hello') + nameStr;
+                document.getElementById('today-greeting').textContent = data.part_of_day;
+                
+                if (currentLang === 'it') {
+                    document.getElementById('btn-diary').textContent = '📖 Raccontami';
+                    document.getElementById('diary-banner').childNodes[1].nodeValue = 'Diario Attivo ';
+                    document.getElementById('diary-banner').querySelector('button').textContent = 'Stop';
+                }
+                
+                const itemsContainer = document.getElementById('today-list');
+                itemsContainer.textContent = '';
+                
+                if (data.items.length === 0) {
+                    itemsContainer.appendChild(el('div', {style: 'text-align: center; color: #595959; font-size: 1.2rem; padding: 20px;'}, currentLang === 'it' ? 'Nessun evento per oggi.' : 'No events for today.'));
+                    return;
+                }
+                
+                const nowTimeStr = new Date().toTimeString().substring(0,5);
+                let activeMed = null;
+                
+                data.items.forEach(item => {
+                    const isPast = item.time < nowTimeStr;
+                    let icon = '';
+                    if (item.kind === 'med') icon = '💊';
+                    else if (item.kind === 'habit') icon = '🔁';
+                    else if (item.kind === 'event') icon = '📅';
+                    
+                    let checkStr = '';
+                    if (item.kind === 'med' && item.status === 'confirmed') {
+                        checkStr = ' <span style="color: var(--success); font-weight: bold; font-size: 24px;">✓</span>';
+                    }
+                    
+                    if (item.kind === 'med' && (item.med_state === 'due' || item.med_state === 'missed')) {
+                        if (!activeMed) activeMed = item;
+                    }
+                    
+                    const div = document.createElement('div');
+                    div.className = 'today-item';
+                    if (isPast) {
+                        div.style.color = 'var(--border)';
+                    }
+                    
+                    const itemRow = el('div', {style: 'display:flex; align-items:center;'}, [
+                        el('span', {className: 'today-time'}, item.time),
+                        el('span', {style: 'margin: 0 10px;'}, icon),
+                        el('span', {style: 'flex:1; font-weight: 500;'}, item.text),
+                        el('span', {innerHTML: checkStr}) // checkStr is already safe SVG
+                    ]);
+                    div.appendChild(itemRow);
+                    itemsContainer.appendChild(div);
+                });
+                
+                if (activeMed) {
+                    showMedReminder(activeMed);
+                } else {
+                    document.getElementById('med-reminder-overlay').style.display = 'none';
+                    activeMedId = null;
+                }
+            } catch (err) {
+                console.error("Failed to load today data", err);
+            }
+        }
+        
+        let activeMedId = null;
+        let lastSpokenMedId = null;
+
+        function showMedReminder(med) {
+            const overlay = document.getElementById('med-reminder-overlay');
+            if (overlay.style.display !== 'flex') {
+                overlay.style.display = 'flex';
+                document.getElementById('med-reminder-title').textContent = currentLang === 'it' ? "È ora della medicina" : "Time for your medicine";
+                document.getElementById('med-reminder-name').textContent = med.text + ' (' + med.time + ')';
+                
+                if (currentLang === 'it') {
+                    const btns = document.getElementById('med-reminder-buttons').querySelectorAll('button');
+                    btns[0].textContent = "L'ho presa";
+                    btns[1].textContent = "Non ancora";
+                    btns[2].textContent = "Non sono sicuro";
+                }
+                
+                document.getElementById('med-reminder-buttons').style.display = 'flex';
+                document.getElementById('med-reminder-feedback').style.display = 'none';
+                activeMedId = med.id;
+                
+                if (lastSpokenMedId !== med.id) {
+                    speakResponse(currentLang === 'it' ? "È ora della medicina: " + med.text : "It's time for your medicine: " + med.text);
+                    lastSpokenMedId = med.id;
+                }
+            }
+        }
+        
+        async function confirmReminder(status) {
+            if (!activeMedId) return;
+            
+            if (status === 'unsure') {
+                document.getElementById('med-reminder-buttons').style.display = 'none';
+                const msg = currentLang === 'it' ? "Ho chiesto al tuo caregiver di aiutarti." : "I've asked your caregiver to help you.";
+                document.getElementById('med-reminder-feedback').textContent = msg;
+                document.getElementById('med-reminder-feedback').style.display = 'block';
+                speakResponse(msg);
+            } else if (status === 'confirmed') {
+                document.getElementById('med-reminder-buttons').style.display = 'none';
+                const msg = currentLang === 'it' ? "Perfetto, ho registrato che l'hai presa." : "Great, I've recorded that you took it.";
+                document.getElementById('med-reminder-feedback').textContent = msg;
+                document.getElementById('med-reminder-feedback').style.display = 'block';
+                speakResponse(msg);
+            }
+            
+            try {
+                const response = await fetch('/api/med/confirm', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ med_id: activeMedId, status: status })
+                });
+                if(!response.ok) throw new Error();
+                hideError();
+            } catch (err) {
+                showError();
+            }
+            
+            if (status === 'snoozed') {
+                document.getElementById('med-reminder-overlay').style.display = 'none';
+                loadToday();
+            } else {
+                setTimeout(() => {
+                    document.getElementById('med-reminder-overlay').style.display = 'none';
+                    loadToday();
+                }, 4000);
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadToday();
+            setInterval(loadToday, 30000);
+            loadAAC();
+            setInterval(loadAAC, 15000);
+        });
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/static/sw.js');
+        }
+    </script>
+</body>
+</html>
