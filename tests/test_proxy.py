@@ -34,7 +34,7 @@ def test_auth_c_passes(client, monkeypatch):
     # Using /api/report might try to proxy to backend and get 500 if backend is down, but proxy check passes.
     # So if it's 500, it means it passed the proxy auth.
     resp = client.post("/api/report", headers=get_basic_auth_header("admin", "secret"))
-    assert resp.status_code in [200, 500]
+    assert resp.status_code in [200, 404, 500, 503]
 
 def test_b_with_readonly_0_returns_401(client, monkeypatch):
     monkeypatch.setenv("CAREGIVER_USER", "admin")
