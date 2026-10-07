@@ -1,29 +1,6 @@
+# Render hosts the Flask dashboard only. The FastAPI backend (with its persistent encrypted DB) runs on Fly.io
+# (see fly.toml). Set API_URL to the Fly.io app URL in the Render dashboard.
 services:
-  # -----------------------------------------------------
-  # 1. Backend Service (FastAPI)
-  # -----------------------------------------------------
-  - type: web
-    name: memora-backend
-    env: python
-    buildCommand: "pip install -r requirements.txt"
-    startCommand: "./scripts/start_backend.sh"
-    envVars:
-      - key: NEBIUS_API_KEY
-        sync: false
-      - key: TAVILY_API_KEY
-        sync: false
-      - key: DB_KEY
-        sync: false
-      - key: DB_PATH
-        value: "./data/memora.db"
-      - key: MEMORA_API_KEY
-        sync: false
-      - key: CORS_ORIGINS
-        sync: false
-
-  # -----------------------------------------------------
-  # 2. Dashboard Service (Flask)
-  # -----------------------------------------------------
   - type: web
     name: memora-dashboard
     env: python
@@ -31,10 +8,7 @@ services:
     startCommand: "gunicorn dashboard.app:app --bind 0.0.0.0:$PORT"
     envVars:
       - key: API_URL
-        fromService:
-          type: web
-          name: memora-backend
-          envVarKey: RENDER_EXTERNAL_URL
+        sync: false            # e.g. https://memora-y2ebcg.fly.dev
       - key: MEMORA_API_KEY
         sync: false
       - key: CAREGIVER_USER
@@ -42,6 +16,6 @@ services:
       - key: CAREGIVER_PASSWORD
         sync: false
       - key: DEMO_PUBLIC_READONLY
-        sync: false
+        value: "1"
       - key: MAX_DAILY_LLM_CALLS
-        sync: false
+        value: "500"

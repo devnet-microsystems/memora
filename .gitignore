@@ -8,3 +8,15 @@ data/*.db
 *_push_sub.json
 .DS_Store
 strix_runs/
+
+# --- added during repository review ---
+*.log
+.coverage
+htmlcov/
+*.pdf
+Archivio*.zip
+strix_runs/
+strix-report-*
+poc_*.py
+.!*
+*.patch

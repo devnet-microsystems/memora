@@ -9,3 +9,10 @@ data/*.db
 .DS_Store
 memora-mobile/node_modules
 .git
+*.log
+*.pdf
+*.zip
+tests/
+mocks/
+.coverage
+strix_runs/

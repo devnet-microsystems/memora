@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Caregiver Dashboard</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/theme.css">
     <style>
         .summary-bar {
@@ -427,8 +426,8 @@
                 const response = await fetch('/api/memory');
                 const data = await response.json();
                 
-                let alarms = data.nodes.filter(n => n.group === 'alert' || n.group === 'flag');
-                alarms.sort((a, b) => b.id.localeCompare(a.id));
+                let alarms = data.nodes.filter(n => n.group === 'alert' && n.status !== 'acknowledged');
+                alarms.sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
                 alarms = alarms.slice(0, 10);
                 
                 const alertsList = document.getElementById('alerts-list');
@@ -443,7 +442,7 @@
                                 el('strong', {}, `[${a.group.toUpperCase()}]`),
                                 ` ${a.label}`
                             ]),
-                            el('button', {className: 'btn', 'data-id': a.id, onclick: function() { resolveAlarm(this.dataset.id); }}, 'Mark as handled')
+                            el('button', {className: 'btn', 'data-id': a.id, onclick: function() { resolveAlarm(this.dataset.id); }}, 'Acknowledge')
                         ]);
                         alertsList.appendChild(item);
                     });
@@ -473,14 +472,14 @@
                 const meds = today.items.filter(i => i.kind === 'med');
                 const totalMeds = meds.length;
                 const confirmedMeds = meds.filter(m => m.status === 'confirmed').length;
-                document.getElementById('summary-meds').textContent = `💊 Meds: ${confirmedMeds}/${totalMeds}`);
+                document.getElementById('summary-meds').textContent = `💊 Meds: ${confirmedMeds}/${totalMeds}`;
                 
                 const repeatsToday = stats.totals ? stats.totals.repeats : 0;
                 document.getElementById('summary-repeats').textContent = `🔁 Repeats: ${repeatsToday}`;
                 
                 let openAlerts = 0;
                 if(mem.nodes) {
-                    openAlerts = mem.nodes.filter(n => n.group === 'alert' || n.group === 'flag').length;
+                    openAlerts = mem.nodes.filter(n => n.group === 'alert' && n.status !== 'acknowledged').length;
                 }
                 const chipAlerts = document.getElementById('summary-alerts');
                 chipAlerts.textContent = `🆘 Alerts: ${openAlerts}`;
@@ -509,7 +508,8 @@
         }
 
         async function resolveAlarm(id) {
-            await fetch(`/api/memory/${id}`, { method: 'DELETE' });
+            const res = await fetch(`/api/alerts/${encodeURIComponent(id)}/ack`, { method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}' });
+            if (!res.ok) { alert('Could not acknowledge the alert (caregiver login required).'); return; }
             loadMemoryAndAlerts();
             loadSummary();
         }

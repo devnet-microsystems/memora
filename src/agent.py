@@ -209,7 +209,7 @@ STRICT Rules:
                                 if meta.get(escalation_key) != today_str:
                                     self.notify_caregiver(f"Il paziente chiede se ha preso {med_name} ma non risulta confermato.")
                                     meta[escalation_key] = today_str
-                                    self.memory.update_node(node_id, {"meta": meta})
+                                    self.memory.update_node(node_id, meta_patch=meta)
                             elif state in ["upcoming", "snoozed"]:
                                 if lang == "it": answers.append(f"{med_name} è previsto per le {due_str}.")
                                 else: answers.append(f"{med_name} is planned for {due_str}.")
@@ -560,8 +560,9 @@ STRICT Rules:
         node = {
             "id": alert_id,
             "type": "alert",
-            "content": f"LLM Proposes Notification: {safe_message}",
-            "meta": {"source": "llm_tool_call"}
+            "content": f"Caregiver notification: {safe_message}",
+            "skip_embedding": True,
+            "meta": {"source": "llm_tool_call", "status": "open"}
         }
         self.memory.add_nodes([node])
         return True

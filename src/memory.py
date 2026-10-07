@@ -25,6 +25,7 @@ except ImportError:
 
 from dotenv import load_dotenv
 from src.nebius_client import NebiusClient
+from src.seed_overlay import apply_overlay
 
 # Load environment variables
 load_dotenv()
@@ -158,6 +159,7 @@ class MemoryGraph:
 
                 with open(path, 'r') as f:
                     data = json.load(f)
+                data = apply_overlay(data)   # clean-up + simulated week of activity (see src/seed_overlay.py)
 
                 nodes = data.get("nodes", [])
                 edges = data.get("edges", [])
@@ -181,13 +183,13 @@ class MemoryGraph:
                             schedule=schedule,
                             last_status=None,
                             last_confirmation=None,
-                            meta={}
+                            meta=node.get("meta") or {}
                         )
                         emb_json = json.dumps(embedding) if embedding else None
                         cursor.execute('''
                             INSERT OR REPLACE INTO nodes (id, type, content, timestamp, embedding, schedule, last_status, last_confirmation, meta)
                             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        ''', (node_id, n_type, content, timestamp, emb_json, schedule, None, None, "{}"))
+                        ''', (node_id, n_type, content, timestamp, emb_json, schedule, None, None, json.dumps(node.get("meta") or {})))
                     
                     for edge in edges:
                         source = edge["source"]
@@ -218,9 +220,11 @@ class MemoryGraph:
             except Exception as e:
                 logger.error(f"Failed to load seed data: {e}")
 
-    def add_node(self, node_id: str, type: str, content: str, schedule: Optional[str] = None, last_status: Optional[str] = None, last_confirmation: Optional[float] = None, embedding: Optional[List[float]] = None) -> None:
+    def add_node(self, node_id: str, type: str, content: str, schedule: Optional[str] = None, last_status: Optional[str] = None, last_confirmation: Optional[float] = None, embedding: Optional[List[float]] = None, skip_embedding: bool = False, meta: Optional[Dict[str, Any]] = None) -> None:
         """
         Args:
+            skip_embedding: store the node without calling the embedding API (alerts, flags).
+            meta: optional metadata; when omitted the existing metadata of the node is preserved.
             node_id: Unique identifier for the node.
             type: Node type (e.g., person, place, event, habit, med).
             content: Raw text content of the memory.
@@ -228,11 +232,12 @@ class MemoryGraph:
         """
         logger.info(f"add_node: id={node_id}, type={type}, content={content[:50]}")
         timestamp = time.time()
-        if embedding is None:
+        if embedding is None and not skip_embedding:
             embedding = self.client.embed(content)
         
         with self.lock:
             existing = self.graph.nodes.get(node_id, {})
+            node_meta = meta if meta is not None else (existing.get('meta') or {})
             if schedule is None:
                 schedule = existing.get('schedule')
             if last_status is None:
@@ -249,16 +254,16 @@ class MemoryGraph:
                 schedule=schedule,
                 last_status=last_status,
                 last_confirmation=last_confirmation,
-                meta={}
+                meta=node_meta
             )
             
             with self._get_connection() as conn:
                 cursor = conn.cursor()
-                emb_json = json.dumps(embedding)
+                emb_json = json.dumps(embedding) if embedding else None
                 cursor.execute('''
                     INSERT OR REPLACE INTO nodes (id, type, content, timestamp, embedding, schedule, last_status, last_confirmation, meta)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (node_id, type, content, timestamp, emb_json, schedule, last_status, last_confirmation, "{}"))
+                ''', (node_id, type, content, timestamp, emb_json, schedule, last_status, last_confirmation, json.dumps(node_meta)))
                 conn.commit()
             
         logger.info(f"add_node: nodo aggiunto, totale nodi={self.graph.number_of_nodes()}")
@@ -329,6 +334,8 @@ class MemoryGraph:
         results = []
         
         for node_id, data in self.graph.nodes(data=True):
+            if data.get("type") in ("alert", "flag"):
+                continue  # operational records must never become LLM context
             if "embedding" in data and data["embedding"]:
                 score = self._cosine_similarity(query_embedding, data["embedding"])
                 results.append({
@@ -413,11 +420,15 @@ class MemoryGraph:
                 
             content = data.get("content", n)
             label = content[:40] + "..." if len(content) > 40 else content
-            nodes.append({
-                "id": n, 
-                "label": label, 
-                "group": data.get("type", "unknown")
-            })
+            entry = {
+                "id": n,
+                "label": label,
+                "group": data.get("type", "unknown"),
+                "timestamp": data.get("timestamp", 0),
+            }
+            if node_type == "alert":
+                entry["status"] = (data.get("meta") or {}).get("status", "open")
+            nodes.append(entry)
             
         edges = []
         for u, v, data in self.graph.edges(data=True):
@@ -436,7 +447,7 @@ class MemoryGraph:
         timestamp = time.time()
         to_embed = []
         for n in nodes:
-            if "embedding" not in n or n["embedding"] is None:
+            if ("embedding" not in n or n["embedding"] is None) and not n.get("skip_embedding"):
                 to_embed.append(n)
                 
         if to_embed:
@@ -477,39 +488,60 @@ class MemoryGraph:
                     ''', (node_id, n_type, content, timestamp, emb_json, schedule, None, None, meta_json))
                 conn.commit()
 
-    def update_node(self, node_id: str, type: Optional[str] = None, content: Optional[str] = None, meta_patch: Optional[Dict[str, Any]] = None) -> None:
+    def update_node(self, node_id: str, type: Optional[str] = None, content: Optional[str] = None,
+                    meta_patch: Optional[Dict[str, Any]] = None, last_status: Optional[str] = None,
+                    last_confirmation: Optional[float] = None) -> None:
+        """Update fields of an existing node and persist them.
+
+        Always call with keyword arguments (``meta_patch=...``). A non-string ``type`` is rejected
+        so that a wrong call can never corrupt the graph.
+        """
+        if type is not None and not isinstance(type, str):
+            raise TypeError("update_node: 'type' must be a string; use meta_patch=... for metadata")
+        if content is not None:
+            new_embedding = self.client.embed(content)  # outside the lock: network call
+        else:
+            new_embedding = None
         with self.lock:
             if not self.graph.has_node(node_id):
                 return
-            
+
             node = self.graph.nodes[node_id]
             updated = False
-            
+
             if type is not None and node.get("type") != type:
                 node["type"] = type
                 updated = True
-                
+
             if content is not None and node.get("content") != content:
                 node["content"] = content
-                node["embedding"] = self.client.embed(content)
+                node["embedding"] = new_embedding
                 updated = True
-                
+
             if meta_patch is not None:
-                meta = node.get("meta", {})
+                meta = dict(node.get("meta") or {})
                 meta.update(meta_patch)
                 node["meta"] = meta
                 updated = True
-                
+
+            if last_status is not None:
+                node["last_status"] = last_status
+                updated = True
+            if last_confirmation is not None:
+                node["last_confirmation"] = last_confirmation
+                updated = True
+
             if updated:
                 with self._get_connection() as conn:
                     cursor = conn.cursor()
                     emb_json = json.dumps(node.get("embedding")) if node.get("embedding") else None
-                    meta_json = json.dumps(node.get("meta")) if node.get("meta") else None
+                    meta_json = json.dumps(node.get("meta") or {})
                     cursor.execute('''
                         UPDATE nodes
-                        SET type = ?, content = ?, embedding = ?, meta = ?
+                        SET type = ?, content = ?, embedding = ?, meta = ?, last_status = ?, last_confirmation = ?
                         WHERE id = ?
-                    ''', (node.get("type"), node.get("content"), emb_json, meta_json, node_id))
+                    ''', (node.get("type"), node.get("content"), emb_json, meta_json,
+                          node.get("last_status"), node.get("last_confirmation"), node_id))
                     conn.commit()
 
     def log_event(self, kind: str, data: Optional[Dict[str, Any]] = None, simulated: bool = False, ts: Optional[float] = None) -> None:
@@ -527,6 +559,13 @@ class MemoryGraph:
                     VALUES (?, ?, ?, ?)
                 ''', (ts, kind, data_json, sim_int))
                 conn.commit()
+
+    EVENT_KIND_MAP = {
+        "interaction": "interactions", "user_message": "interactions",
+        "repeat_flag": "repeats", "confusion_flag": "confusion", "sos": "sos",
+        "med_confirmed": "meds_confirmed", "med_missed": "meds_missed", "med_denied": "meds_missed",
+        "med_unsure": "meds_unsure", "diary_turn": "diary_turns",
+    }
 
     def get_stats(self, days: int) -> Dict[str, Any]:
         """Get aggregated stats for the last N days."""
@@ -565,29 +604,17 @@ class MemoryGraph:
                 
             is_current = (ts >= start_ts)
             
-            # map event kinds
-            map_kind = kind
-            if kind == 'user_message' or kind == 'diary_turn':
-                map_kind = 'interactions'
-            
+            map_kind = self.EVENT_KIND_MAP.get(kind)
+            if map_kind is None:
+                continue
+
             if is_current:
-                if map_kind in totals:
-                    totals[map_kind] += 1
-                if kind == 'diary_turn':
-                    totals['diary_turns'] += 1
-                
+                totals[map_kind] += 1
                 dt = datetime.fromtimestamp(ts, tz)
-                day_str = dt.strftime('%Y-%m-%d')
-                if map_kind in metrics[day_str]:
-                    metrics[day_str][map_kind] += 1
-                if kind == 'diary_turn':
-                    metrics[day_str]['diary_turns'] += 1
+                metrics[dt.strftime('%Y-%m-%d')][map_kind] += 1
             else:
-                if map_kind in prev_totals:
-                    prev_totals[map_kind] += 1
-                if kind == 'diary_turn':
-                    prev_totals['diary_turns'] += 1
-                    
+                prev_totals[map_kind] += 1
+
         return {
             "days": days,
             "simulated": simulated,

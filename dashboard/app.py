@@ -9,8 +9,11 @@ import hmac
 import requests
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, request, Response
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+# Behind Render/Fly the real client IP is in X-Forwarded-For; without this every visitor shares one rate-limit bucket.
+app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024  # 16 KB
 
 API_URL = os.getenv("API_URL", "http://localhost:8000")
@@ -18,13 +21,15 @@ API_URL = os.getenv("API_URL", "http://localhost:8000")
 # In-memory rate limiting state
 rate_limits = defaultdict(list)
 daily_llm_calls = 0
+daily_llm_day = None
 
 def check_auth(username, password):
     expected_user = os.getenv("CAREGIVER_USER")
     expected_pass = os.getenv("CAREGIVER_PASSWORD")
     if not expected_user or not expected_pass:
         return False
-    return hmac.compare_digest(username, expected_user) and hmac.compare_digest(password, expected_pass)
+    return (hmac.compare_digest(username.encode(), expected_user.encode())
+            and hmac.compare_digest(password.encode(), expected_pass.encode()))
 
 def authenticate():
     return Response(
@@ -42,7 +47,7 @@ def get_api_headers():
 
 @app.before_request
 def proxy_checks():
-    global daily_llm_calls
+    global daily_llm_calls, daily_llm_day
     
     path = request.path
     method = request.method
@@ -75,7 +80,7 @@ def proxy_checks():
             is_public_readonly = True
 
     # Check protection
-    if path.startswith('/api/') or path == '/caregiver':
+    if path.startswith('/api/'):
         if not is_public_patient and not is_public_readonly:
             if not os.getenv("CAREGIVER_USER") or not os.getenv("CAREGIVER_PASSWORD"):
                 return "caregiver auth not configured", 503
@@ -103,11 +108,14 @@ def proxy_checks():
     # 3. Message size limit for patient chat
     if path == '/api/chat' and method == 'POST':
         data = request.get_json(silent=True) or {}
-        if len(data.get('message', '')) > 500:
+        if len(data.get('user_input', data.get('message', '')) or '') > 500:
             return jsonify({"error": "Text too long"}), 422
 
     # 4. Global LLM call limit
     if path in ['/api/chat', '/api/diary/turn', '/api/onboarding', '/api/report'] and method == 'POST':
+        today = time.strftime("%Y-%m-%d")
+        if daily_llm_day != today:
+            daily_llm_day, daily_llm_calls = today, 0
         max_calls = int(os.getenv("MAX_DAILY_LLM_CALLS", "500"))
         if daily_llm_calls >= max_calls:
             return jsonify({"response": "Demo limit reached"}), 429
@@ -130,7 +138,7 @@ def caregiver():
     try:
         resp = requests.get(f"{API_URL}/health", timeout=2)
         if resp.status_code == 200: status = "online"
-    except: pass
+    except requests.RequestException: pass
     return render_template("index.html", api_url=API_URL, status=status)
 
 @app.route("/patient")
@@ -145,11 +153,7 @@ def judges(): return render_template("judges.html")
 # ---- API ROUTES ----
 def _proxy_get(endpoint):
     try:
-        url = f"{API_URL}{endpoint}"
-        if request.args:
-            params = "&".join(f"{k}={v}" for k, v in request.args.items())
-            url += f"?{params}"
-        resp = requests.get(url, timeout=10, headers=get_api_headers())
+        resp = requests.get(f"{API_URL}{endpoint}", params=request.args.to_dict(), timeout=10, headers=get_api_headers())
         return jsonify(resp.json()), resp.status_code
     except requests.RequestException as e:
         return jsonify({"error": str(e)}), 500
@@ -213,9 +217,9 @@ def route_med_confirm():
         resp = requests.get(f"{API_URL}/memory", timeout=5, headers=get_api_headers())
         nodes = resp.json().get("nodes", [])
         med_node = next((n for n in nodes if n["id"] == data.get("med_id")), None)
-        if not med_node or med_node.get("type") != "med":
+        if not med_node or med_node.get("group") != "med":
             return jsonify({"error": "Invalid med_id"}), 400
-    except:
+    except Exception:
         return jsonify({"error": "Failed to validate med"}), 500
     return _proxy_post("/med/confirm", data)
 
