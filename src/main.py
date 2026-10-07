@@ -117,18 +117,18 @@ def medication_scheduler_loop():
                             schedule = data.get("schedule", "Unknown time")
                             
                             logger.warning(f"Escalating missed medication: {node_id}")
-                            # notify caregiver
-                            agent.notify_caregiver(f"{content} alle {schedule} non confermato")
-                            
-                            # create alert node
+                            # operational alert (no embedding call: it must be instant and never reach the LLM context)
                             alert_id = f"alert_missed_{node_id}_{int(time.time()*1000)}"
-                            agent.memory_add(alert_id, "alert", f"Missed med: {content} alle {schedule}")
-                            
+                            agent.memory.add_nodes([{
+                                "id": alert_id, "type": "alert", "skip_embedding": True,
+                                "content": f"Missed medication: {content} at {schedule}",
+                                "meta": {"status": "open", "source": "med_scheduler", "med_id": node_id},
+                            }])
+
                             meta["last_escalation_date"] = today_str
-                            
-                            # Update node in memory
-                            agent.memory.update_node(node_id, {"meta": meta, "last_status": "no_response"})
-                            
+                            agent.memory.update_node(node_id, meta_patch={"last_escalation_date": today_str},
+                                                     last_status="no_response")
+
                             agent.memory.log_event("med_missed", {"med_id": node_id})
                             
         except Exception as e:
@@ -274,15 +274,42 @@ async def handle_sos(request: SOSRequest):
     
     logger.warning(f"SOS_RECEIVED | patient={request.patient_id} | timestamp={timestamp}")
     
-    alert_id = f"sos_{now.strftime('%Y%m%d%H%M%S')}"
+    alert_id = f"sos_{now.strftime('%Y%m%d%H%M%S%f')}"
     try:
-        agent.memory_add(alert_id, "alert", f"SOS alle {ora}")
-        agent.notify_caregiver(f"SOS from {request.patient_id} at {ora}")
+        # Written directly as an *open alert* (instant: no embedding, no LLM). The old path went through the
+        # human-approval queue and two embedding calls, so a real SOS could take 40+ seconds to appear.
+        agent.memory.add_nodes([{
+            "id": alert_id, "type": "alert", "skip_embedding": True,
+            "content": f"SOS from {request.patient_id} at {ora}",
+            "meta": {"status": "open", "source": "patient_sos", "patient_id": request.patient_id},
+        }])
         agent.memory.log_event("sos", data={"patient_id": request.patient_id, "type": request.type})
         return {"status": "ok", "alert_id": alert_id}
     except Exception as e:
         logger.error(f"Failed to save SOS alert: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/alerts/{alert_id}")
+async def get_alert(alert_id: str):
+    """Return the status of an alert so the patient app can wait for a real acknowledgement."""
+    if not agent or not agent.memory.graph.has_node(alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found")
+    data = agent.memory.graph.nodes[alert_id]
+    if data.get("type") != "alert":
+        raise HTTPException(status_code=404, detail="Alert not found")
+    meta = data.get("meta") or {}
+    return {"id": alert_id, "status": meta.get("status", "open"), "acknowledged_at": meta.get("acknowledged_at")}
+
+@app.post("/alerts/{alert_id}/ack")
+async def ack_alert(alert_id: str):
+    """A caregiver acknowledges an alert (taken in charge)."""
+    if not agent or not agent.memory.graph.has_node(alert_id):
+        raise HTTPException(status_code=404, detail="Alert not found")
+    if agent.memory.graph.nodes[alert_id].get("type") != "alert":
+        raise HTTPException(status_code=404, detail="Alert not found")
+    agent.memory.update_node(alert_id, meta_patch={"status": "acknowledged", "acknowledged_at": time.time()})
+    agent.memory.log_event("alert_ack", data={"alert_id": alert_id})
+    return {"status": "acknowledged", "id": alert_id}
 
 class MedConfirmRequest(BaseModel):
     med_id: str
@@ -312,7 +339,7 @@ async def confirm_med(request: MedConfirmRequest):
                     meta["snoozed_until"] = now.timestamp() + 600 # 10 min
                     meta["snooze_count"] = snooze_count + 1
                     meta["snooze_count_date"] = today_str
-                    agent.memory.update_node(request.med_id, {"meta": meta})
+                    agent.memory.update_node(request.med_id, meta_patch=meta)
                 else:
                     return {"status": "error", "message": "Max snoozes reached"}
                     
@@ -321,7 +348,7 @@ async def confirm_med(request: MedConfirmRequest):
                 if meta.get(escalation_key) != today_str:
                     agent.notify_caregiver(f"{content} alle {schedule} marcato come {request.status}")
                     meta[escalation_key] = today_str
-                    agent.memory.update_node(request.med_id, {"meta": meta})
+                    agent.memory.update_node(request.med_id, meta_patch=meta)
                     
         if request.status != "snoozed":
             agent.memory.update_med_status(request.med_id, request.status, now.timestamp())
@@ -564,7 +591,7 @@ async def approve_pending(id: str, req: ApprovePendingRequest):
     meta = data.get("meta", {})
     new_type = meta.get("proposed_type", "fact")
     new_content = req.content if req.content else data.get("content", "")
-    agent.memory.update_node(id, {"type": new_type, "content": new_content})
+    agent.memory.update_node(id, type=new_type, content=new_content, meta_patch={"approved": True})
     if agent.memory.graph.has_node("patient"):
         agent.memory.add_edge("patient", id, "remembers")
     agent.memory.log_event("approved")

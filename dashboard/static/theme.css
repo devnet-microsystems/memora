@@ -1,80 +1,178 @@
+/* Memora design system — shared by landing, caregiver, judges and story pages.
+   Principles: calm warm background, one blue for actions, red reserved for emergencies,
+   high contrast (AAA for body text), large touch targets, visible keyboard focus. */
+@import url('https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&display=swap');
+
 :root {
     --bg-color: #FBF8F3;
+    --bg-soft: #F3EEE6;
     --text-primary: #1B1B1F;
+    --text-muted: #55535A;
     --primary: #1F5FBF;
+    --primary-dark: #174895;
+    --primary-soft: #E7EFFB;
     --success: #1E7B3A;
+    --success-soft: #E4F3E8;
+    --warning-soft: #FEF3C7;
+    --warning-text: #7A3E06;
     --danger: #B3261E;
+    --danger-soft: #FBE9E7;
     --surface: #FFFFFF;
     --border: #D9D4CB;
-    
+    --radius: 16px;
+    --shadow-sm: 0 1px 2px rgba(27,27,31,.06), 0 1px 3px rgba(27,27,31,.08);
+    --shadow-md: 0 4px 12px rgba(27,27,31,.08), 0 2px 4px rgba(27,27,31,.06);
+
     --bs-body-bg: var(--bg-color);
     --bs-body-color: var(--text-primary);
     --bs-primary: var(--primary);
     --bs-success: var(--success);
     --bs-danger: var(--danger);
     --bs-border-color: var(--border);
-    --bs-font-sans-serif: 'Atkinson Hyperlegible', system-ui, sans-serif;
+    --bs-font-sans-serif: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
 
 body {
-    background-color: var(--bg-color) !important;
+    background: linear-gradient(180deg, var(--bg-color) 0%, var(--bg-soft) 100%) fixed !important;
     color: var(--text-primary) !important;
-    font-family: 'Atkinson Hyperlegible', system-ui, sans-serif !important;
+    font-family: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+    font-size: 18px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
 }
 
+h1, h2, h3 { line-height: 1.2; letter-spacing: -0.01em; }
+a { color: var(--primary); text-underline-offset: 3px; }
+a:hover { color: var(--primary-dark); }
+
+/* Keyboard focus is always visible */
+:focus-visible { outline: 3px solid #0B3D91; outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- cards ---------- */
 .card {
     background: var(--surface) !important;
     border: 1px solid var(--border) !important;
-    border-radius: 16px !important;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.05) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-sm) !important;
     margin-bottom: 20px;
-    padding: 20px;
+    padding: 22px;
+    transition: box-shadow .2s ease, transform .2s ease;
 }
-
+.card:hover { box-shadow: var(--shadow-md) !important; }
 .card-title {
-    font-weight: bold !important;
-    color: var(--primary) !important;
-    margin-bottom: 15px;
-    font-size: 1.5rem;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 16px;
+    font-size: 1.35rem;
+    display: flex; align-items: center; gap: 10px;
 }
 
-.badge {
-    padding: 5px 10px !important;
-    border-radius: 20px !important;
-    font-weight: 500 !important;
-}
-
-.badge-primary { background: var(--primary) !important; color: white !important; }
-.badge-success { background: var(--success) !important; color: white !important; }
-.badge-danger { background: var(--danger) !important; color: white !important; }
-.badge-orange { background-color: #fef3c7 !important; color: #92400e !important; }
-
+/* ---------- buttons ---------- */
 .btn {
     border-radius: 12px !important;
-    font-weight: bold !important;
-    padding: 10px 20px !important;
+    font-weight: 700 !important;
+    padding: 12px 22px !important;
+    min-height: 48px;
+    border: 2px solid transparent;
+    transition: background-color .15s ease, transform .1s ease, box-shadow .15s ease;
 }
-
+.btn:active { transform: translateY(1px); }
 .btn-primary {
     background-color: var(--primary) !important;
     border-color: var(--primary) !important;
-    color: white !important;
+    color: #fff !important;
+    box-shadow: 0 2px 0 var(--primary-dark);
 }
-.btn-primary:hover {
-    background-color: #174895 !important;
+.btn-primary:hover { background-color: var(--primary-dark) !important; border-color: var(--primary-dark) !important; }
+.btn-primary:disabled, .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+.btn-danger { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+.btn-outline { background: transparent; border-color: var(--primary); color: var(--primary); }
+
+/* ---------- forms ---------- */
+.form-group { margin-bottom: 14px; }
+label { font-weight: 700; margin-bottom: 6px; display: inline-block; }
+.form-control, select, textarea, input[type=text], input[type=time] {
+    width: 100%;
+    background: #fff;
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    min-height: 48px;
+}
+.form-control:focus, select:focus, textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(31,95,191,.25); }
+
+/* ---------- badges & chips ---------- */
+.badge {
+    display: inline-block;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+    font-size: .85rem;
+}
+.badge-primary { background: var(--primary) !important; color: #fff !important; }
+.badge-success, .badge-green { background: var(--success-soft) !important; color: var(--success) !important; }
+.badge-danger, .badge-red { background: var(--danger-soft) !important; color: var(--danger) !important; }
+.badge-orange { background-color: var(--warning-soft) !important; color: var(--warning-text) !important; }
+
+/* ---------- tables ---------- */
+table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 12px; }
+th, td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--border); vertical-align: middle; }
+th { font-weight: 700; color: var(--text-muted); background-color: var(--bg-soft); font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+tbody tr:hover { background: #FAFAF7; }
+tbody tr:last-child td { border-bottom: none; }
+
+/* ---------- caregiver summary bar ---------- */
+.summary-bar {
+    position: sticky; top: 0; z-index: 20;
+    background: rgba(255,255,255,.92);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-sm);
+}
+.chip {
+    background: var(--primary-soft);
+    color: #0B3D91;
+    border-radius: 999px;
+    padding: 8px 14px;
+    font-weight: 700;
+    font-size: .95rem;
+    white-space: nowrap;
 }
 
-table {
-    width: 100%;
-    border-collapse: collapse;
+/* ---------- alerts ---------- */
+.alert-open, .alarm-open {
+    background: var(--danger) !important;
+    color: #fff !important;
+    border-radius: 12px;
+    animation: pulse-alert 2s ease-in-out infinite;
 }
-th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid var(--border);
+@keyframes pulse-alert { 0%,100% { box-shadow: 0 0 0 0 rgba(179,38,30,.45);} 50% { box-shadow: 0 0 0 10px rgba(179,38,30,0);} }
+
+/* ---------- graph / media ---------- */
+#network, .graph-container, #graph { border: 1px solid var(--border); border-radius: var(--radius); background: #fff; }
+pre, code { background: var(--bg-soft); border-radius: 8px; padding: 2px 6px; }
+img, svg { max-width: 100%; }
+
+/* ---------- responsive ---------- */
+@media (max-width: 640px) {
+    body { font-size: 17px; }
+    .card { padding: 16px; }
+    .summary-chips { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+    table { display: block; overflow-x: auto; }
 }
-th {
-    font-weight: bold;
-    color: var(--primary);
-    background-color: #f5f3ef;
+
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+    .no-print { display: none !important; }
+    body { background: #fff !important; font-size: 12pt; }
+    .card { box-shadow: none !important; break-inside: avoid; }
 }

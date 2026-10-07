@@ -101,10 +101,16 @@ def test_generate_report(client_and_mock):
 def test_handle_sos(client_and_mock):
     client, mock_agent = client_and_mock
     response = client.post("/sos", json={"patient_id": "maria", "type": "medical"})
-    
+
     assert response.status_code == 200
-    args, kwargs = mock_agent.notify_caregiver.call_args
-    assert args[0].startswith("SOS from maria at")
+    alert_id = response.json()["alert_id"]
+    # The SOS is written directly as an *open alert*, with no embedding call and no approval queue.
+    (nodes,), _ = mock_agent.memory.add_nodes.call_args
+    assert nodes[0]["id"] == alert_id
+    assert nodes[0]["type"] == "alert"
+    assert nodes[0]["skip_embedding"] is True
+    assert nodes[0]["meta"]["status"] == "open"
+    mock_agent.memory.log_event.assert_any_call("sos", data={"patient_id": "maria", "type": "medical"})
 
 def test_usage(client_and_mock):
     client, mock_agent = client_and_mock

@@ -118,35 +118,52 @@
             sosMessage.textContent = "Allarme inviato, in attesa...";
         }
 
+        let sosPoll = null;
+        function resetSOS() {
+            clearInterval(sosPoll); sosPoll = null;
+            sosMessage.style.display = 'none';
+            btnSos.style.display = 'flex';
+            sosMessage.textContent = currentLang === 'it' ? "Allarme inviato, in attesa di conferma..." : "Alert sent, waiting for confirmation";
+        }
+
         async function sendSOS() {
             try {
                 btnSos.style.display = 'none';
                 sosMessage.style.display = 'flex';
+                sosMessage.textContent = currentLang === 'it' ? "Allarme inviato, in attesa di conferma..." : "Alert sent, waiting for confirmation";
                 const response = await fetch('/api/sos', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ patient_id: 'maria', type: 'sos' })
                 });
-                
-                if (response.ok) {
-                    hideError();
-                    sosMessage.textContent = currentLang === 'it' ? "Aiuto in arrivo" : "Help is on the way";
-                    if (navigator.vibrate) navigator.vibrate([200, 100, 200, 100, 200]);
-                    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/beep_short.ogg');
-                    audio.play().catch(e => {});
-                    
-                    setTimeout(() => {
-                        sosMessage.style.display = 'none';
-                        btnSos.style.display = 'flex';
-                        sosMessage.textContent = currentLang === 'it' ? "Allarme inviato, in attesa..." : "Alert sent, waiting for confirmation";
-                    }, 10000);
-                } else {
-                    throw new Error("Network");
-                }
+                if (!response.ok) throw new Error("Network");
+                hideError();
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                const data = await response.json();
+
+                // Never claim "help is coming" until a caregiver has really acknowledged the alert.
+                let tries = 0;
+                clearInterval(sosPoll);
+                sosPoll = setInterval(async () => {
+                    tries++;
+                    try {
+                        const r = await fetch('/api/alerts/' + encodeURIComponent(data.alert_id));
+                        const a = await r.json();
+                        if (a.status === 'acknowledged') {
+                            sosMessage.textContent = currentLang === 'it' ? "Il tuo caregiver ha visto l'allarme. Aiuto in arrivo." : "Your caregiver has seen the alert. Help is on the way.";
+                            if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                            clearInterval(sosPoll); sosPoll = null;
+                            setTimeout(resetSOS, 15000);
+                        }
+                    } catch (e) { /* keep waiting */ }
+                    if (tries > 90) {  // ~6 minutes without acknowledgement
+                        sosMessage.textContent = currentLang === 'it' ? "Nessuna conferma ancora. Chiama il 112 se è urgente." : "No confirmation yet. Call 112 if it is urgent.";
+                        clearInterval(sosPoll); sosPoll = null;
+                    }
+                }, 4000);
             } catch (error) {
                 showError();
-                sosMessage.style.display = 'none';
-                btnSos.style.display = 'flex';
+                resetSOS();
             }
         }
 

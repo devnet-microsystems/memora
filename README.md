@@ -4,8 +4,8 @@
 
 **Track:** Personal AI (Nebius x NVIDIA Global AI Hackathon)
 
-**Live demo:** [TODO](TODO)  
-**Video:** [TODO](TODO)
+**Live demo:** [memora-ht5c.onrender.com](https://memora-ht5c.onrender.com/) (dashboard) · [API docs](https://memora-y2ebcg.fly.dev/docs)  
+**Video:** _to be added before submission_
 
 ## Test in 60 seconds
 1. Open `/patient`.
@@ -27,17 +27,9 @@ Memora is designed for two primary users:
 
 ## Safety Features
 Safety is our top priority. Memora includes:
-- **SOS Button**: A highly visible, accessible emergency button that instantly alerts the caregiver.
+- **SOS Button**: A highly visible emergency button. The alert is written instantly (no LLM, no embedding) and the patient screen only says *help is on the way* after a caregiver has actually acknowledged it; otherwise it says it is still waiting and suggests calling 112.
 - **Automated Alerts**: The system detects anomalies (e.g., repeating the same question multiple times in a short window) and automatically raises red flags on the caregiver's dashboard.
 - **Wearable Roadmap**: In future iterations, we plan to integrate Memora with wearable devices (like smartwatches) for fall detection, heart rate monitoring, and even more immediate SOS capabilities.
-
-## Security & Privacy Audit (Strix AI)
-Given the extremely sensitive nature of medical and personal data, Memora has undergone a comprehensive **Deep Security Assessment using [Strix](https://strix.ai/)**.
-During our development, the Strix Agent performed an external and source-aware assessment, highlighting and subsequently helping us mitigate several advanced AI-specific vulnerabilities:
-- **Prompt Injection & Excessive Agency Mitigated**: The LLM intent classification has been hardened using strict Role-based Prompt Separation. Tools like `memory_add` and `notify_caregiver` have been stripped of excessive autonomous agency, now strictly requiring a **Human-In-The-Loop (HITL)** approval via the caregiver dashboard.
-- **SSRF & Data Exfiltration Blocked**: The `tavily_extract` fallback web searching tool has been locked down using a strict domain whitelist (`wikipedia.org`, `nih.gov`, `salute.gov.it`), preventing malicious prompt injections from exfiltrating patient data to external servers.
-- **Data Poisoning & XSS Prevented**: All JSON output extracted from the LLM (e.g. medication schedules) is strictly context-encoded (HTML escaping) before being persisted in our SQLite database, neutralizing Stored XSS attacks on the Caregiver dashboard.
-- **Authentication & IDOR**: The API is entirely secured with explicit middleware checks (`X-Memora-Key` protected against timing attacks via HMAC), preventing Confused Deputy attacks on the proxy and Insecure Direct Object References on the nodes.
 
 ## Accessibility — AAC Support
 To support patients with aphasia or severe speech difficulties, Memora integrates **Augmentative and Alternative Communication (AAC)** features. 
@@ -116,7 +108,7 @@ python -m src.jobs.nightly
 ```bash
 pytest --cov=src --cov-report=term-missing
 ```
-**Results:** 37 tests passed. Code coverage: 74%.
+**Results (measured):** 65 tests passed, 75% line coverage of `src/`.
 
 ## How We Use Nebius Token Factory
 Nebius provides the OpenAI-compatible runtime that powers Memora's intelligence. By setting the `base_url` to `https://api.tokenfactory.nebius.com/v1/`, Memora leverages high-performance inference endpoints securely and reliably, using `tenacity` for resilient retry logic.
@@ -143,12 +135,14 @@ On 3 October 2026 we ran an automated white-box penetration test with Strix (dee
 
 | Finding | Severity | Status |
 |---|---|---|
-| Dashboard acted as an open proxy and injected the backend key into anonymous requests | Critical | Fixed: public patient routes, read-only demo routes, authenticated caregiver writes (confirm after retest) |
-| Stored DOM XSS from unescaped memory data | High | Fixed: DOM construction with textContent, regression test (confirm after retest) |
-| Indirect prompt injection via memory context | High | Mitigated: untrusted context in a delimited user block, sanitized; no model-driven actions (confirm after retest) |
-| VAPID private key in git history | High | Key rotated; history cleaned (confirm after retest) |
-| Vulnerable Node dependencies (braces, node-forge, uuid) in the optional mobile app | High | Updated / app excluded (confirm after retest) |
-| Weak domain allow-list in a Tavily helper | Medium | Removed / exact hostname matching (confirm after retest) |
+| Dashboard acted as an open proxy and injected the backend key into anonymous requests | Critical | Fixed in code: public patient routes, read-only demo routes, Basic-auth for every write (`tests/test_proxy.py`, `tests/test_dashboard_regressions.py`) |
+| Stored DOM XSS from unescaped memory data | High | Fixed in code: DOM built with `textContent` / `esc()`, lint-style test (`tests/test_no_unsafe_innerhtml.py`) |
+| Indirect prompt injection via memory context | High | Mitigated: untrusted context in a delimited user block, sanitized; actions are never driven by model output |
+| VAPID private key committed to git | High | Key files removed. The key was exposed once and must be treated as compromised: rotate it before any real deployment |
+| Vulnerable Node dependencies (braces, node-forge, uuid) | High | Belong to the optional Expo app, which is not part of this repository |
+| Weak domain allow-list in a Tavily helper | Medium | Fixed: exact hostname matching (`tests/test_tavily_tool.py`) |
+
+A full re-test with Strix after these fixes has **not** been run yet.
 
 ### Security & Known Limitations
 - The public demo instance exposes simulated data read-only and accepts patient interactions from anyone (rate-limited, with a daily LLM budget cap). A production deployment would require authentication for every route.
@@ -164,10 +158,10 @@ On 3 October 2026 we ran an automated white-box penetration test with Strix (dee
 ## Feedback on Nebius and NVIDIA
 - **Latency**: Nano: 1.4s, Super: 2.7s, Ultra: 14s.
 - **Cost**: Nano: $0.000144, Super: $0.0015, Ultra: $0.002.
-- **Token Optimization**: We managed to reduce context from 753 tokens down to 10 tokens using highly optimized system prompts, drastically cutting costs and latency.
+- **Prompt discipline**: with no system prompt Nemotron Super answered a simple question with ~750 output tokens (5.8 s); with a strict system prompt ("max 2 sentences, one question at a time") the same question took ~10 tokens (2.7 s).
 - **Issue**: Model names differ between the web catalog and the `/models` API endpoint, causing some initial friction.
 - **Positives**: Excellent instruction-following capabilities when using system prompts.
-- **Issue**: Embeddings endpoint works; latency was the issue.
+- **Issue**: `Qwen3-Embedding-8B` embedding calls took 20–29 s in our tests (single call, cold). Memora therefore stores alerts without embeddings and falls back gracefully when an embedding is slow.
 
 ## License
 This project is licensed under the Apache License 2.0 - see the [LICENSE](LICENSE) file for details.
