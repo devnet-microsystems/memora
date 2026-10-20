@@ -11,7 +11,7 @@ from typing import List, Dict, Any, Optional
 import networkx as nx
 import numpy as np
 import threading
-
+import turso_serverless
 logger = logging.getLogger("memora.memory")
 
 # Try to import libsql for Turso support
