@@ -11,16 +11,16 @@ from typing import List, Dict, Any, Optional
 import networkx as nx
 import numpy as np
 import threading
-import turso_serverless
+
 logger = logging.getLogger("memora.memory")
 
-# Try to import libsql for Turso support
+# Try to import turso_serverless for Turso support
 try:
-    import libsql
+    import turso_serverless
     HAS_LIBSQL = True
 except ImportError:
     HAS_LIBSQL = False
-    logger.warning("libsql not found, will use local SQLite if available")
+    logger.warning("turso_serverless not found, will use local SQLite if available")
 
 # Keep SQLite for backward compatibility / testing
 try:
@@ -55,7 +55,7 @@ class MemoryGraph:
         else:
             # Fallback to local SQLite for testing
             if not HAS_SQLITE:
-                raise ValueError("Neither TURSO_DATABASE_URL (with libsql) nor sqlite3 is available")
+                raise ValueError("Neither TURSO_DATABASE_URL (with turso_serverless) nor sqlite3 is available")
             self.db_path = db_path or os.getenv("DB_PATH", "./data/memora.db")
             self.db_path = os.path.abspath(self.db_path)
             self.db_key = db_key or os.getenv("DB_KEY", "")
@@ -71,8 +71,8 @@ class MemoryGraph:
     def _get_connection(self):
         """Get a configured database connection (Turso or local SQLite)."""
         if self.use_turso:
-            conn = libsql.connect(
-                database=self.db_url,
+            conn = turso_serverless.connect(
+                self.db_url,
                 auth_token=self.auth_token
             )
             return conn
