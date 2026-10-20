@@ -1,6 +1,6 @@
 """
 Persistent Memory Module for Memora.
-Handles local storage and retrieval of user data using NetworkX and SQLite.
+Handles local storage and retrieval of user data using NetworkX and libSQL (Turso) or SQLite.
 """
 
 import os
@@ -14,14 +14,20 @@ import threading
 
 logger = logging.getLogger("memora.memory")
 
+# Try to import libsql for Turso support
 try:
-    from sqlcipher3 import dbapi2 as sqlite
-    HAS_SQLCIPHER = True
-    logger.info("SQLCipher import: True")
+    import libsql
+    HAS_LIBSQL = True
 except ImportError:
+    HAS_LIBSQL = False
+    logger.warning("libsql not found, will use local SQLite if available")
+
+# Keep SQLite for backward compatibility / testing
+try:
     import sqlite3 as sqlite
-    HAS_SQLCIPHER = False
-    logger.warning("SQLCipher not found, falling back to standard sqlite3.")
+    HAS_SQLITE = True
+except ImportError:
+    HAS_SQLITE = False
 
 from dotenv import load_dotenv
 from src.nebius_client import NebiusClient
@@ -36,31 +42,45 @@ class MemoryGraph:
 
     def __init__(self, db_path: Optional[str] = None, db_key: Optional[str] = None):
         """
-        Initialize the Memory Graph and SQLite persistence.
+        Initialize the Memory Graph and persistence.
+        - If TURSO_DATABASE_URL is set: uses libSQL (Turso) with TURSO_AUTH_TOKEN
+        - Otherwise: uses local SQLite (for testing), with optional SQLCipher encryption via db_key
         """
-        self.db_path = db_path or os.getenv("DB_PATH", "./data/memora.db")
-        self.db_path = os.path.abspath(self.db_path)
-        self.db_key = db_key or os.getenv("DB_KEY", "")
+        self.db_url = os.getenv("TURSO_DATABASE_URL")
+        self.auth_token = os.getenv("TURSO_AUTH_TOKEN")
+        self.use_turso = bool(self.db_url and HAS_LIBSQL)
+        
+        if self.use_turso:
+            logger.info("Using Turso (libSQL) for persistence")
+        else:
+            # Fallback to local SQLite for testing
+            if not HAS_SQLITE:
+                raise ValueError("Neither TURSO_DATABASE_URL (with libsql) nor sqlite3 is available")
+            self.db_path = db_path or os.getenv("DB_PATH", "./data/memora.db")
+            self.db_path = os.path.abspath(self.db_path)
+            self.db_key = db_key or os.getenv("DB_KEY", "")
+            logger.info(f"Using local SQLite at {self.db_path}")
+        
         self.client = NebiusClient()
         self.graph = nx.DiGraph()
         self.lock = threading.Lock()
         
-        # Logging moved to module level
-            
         self._init_db()
         self._load_graph()
 
     def _get_connection(self):
-        """Get a configured SQLite/SQLCipher connection."""
-        os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
-        conn = sqlite.connect(self.db_path)
-        if HAS_SQLCIPHER and self.db_key:
-            # Escape single quotes in key to prevent SQL injection in PRAGMA
-            safe_key = self.db_key.replace("'", "''")
-            conn.execute(f"PRAGMA key='{safe_key}'")
-            conn.execute("PRAGMA cipher_page_size = 4096")
-            conn.execute("PRAGMA kdf_iter = 256000") # Upgraded for modern security standards
-        return conn
+        """Get a configured database connection (Turso or local SQLite)."""
+        if self.use_turso:
+            conn = libsql.connect(
+                database=self.db_url,
+                auth_token=self.auth_token
+            )
+            return conn
+        else:
+            # Local SQLite connection
+            os.makedirs(os.path.dirname(os.path.abspath(self.db_path)), exist_ok=True)
+            conn = sqlite.connect(self.db_path)
+            return conn
 
     def _init_db(self) -> None:
         """Initialize the database schema."""
@@ -75,22 +95,18 @@ class MemoryGraph:
                     embedding TEXT
                 )
             ''')
-            try:
-                cursor.execute("ALTER TABLE nodes ADD COLUMN schedule TEXT")
-            except sqlite.OperationalError:
-                pass
-            try:
-                cursor.execute("ALTER TABLE nodes ADD COLUMN last_status TEXT")
-            except sqlite.OperationalError:
-                pass
-            try:
-                cursor.execute("ALTER TABLE nodes ADD COLUMN last_confirmation REAL")
-            except sqlite.OperationalError:
-                pass
-            try:
-                cursor.execute("ALTER TABLE nodes ADD COLUMN meta TEXT")
-            except sqlite.OperationalError:
-                pass
+            # Add missing columns if they don't exist (ignore errors)
+            for col_def in [
+                ("schedule", "TEXT"),
+                ("last_status", "TEXT"),
+                ("last_confirmation", "REAL"),
+                ("meta", "TEXT")
+            ]:
+                col_name, col_type = col_def
+                try:
+                    cursor.execute(f"ALTER TABLE nodes ADD COLUMN {col_name} {col_type}")
+                except Exception:
+                    pass  # Column already exists
             
             cursor.execute('''
                 CREATE TABLE IF NOT EXISTS edges (
@@ -267,11 +283,14 @@ class MemoryGraph:
                 conn.commit()
             
         logger.info(f"add_node: nodo aggiunto, totale nodi={self.graph.number_of_nodes()}")
-        logger.info(f"DB salvato in {self.db_path}")
-        try:
-            logger.info(f"Dimensione DB attuale: {os.path.getsize(self.db_path)} bytes")
-        except OSError:
-            logger.warning(f"Impossibile leggere dimensione DB in {self.db_path}")
+        if self.use_turso:
+            logger.info(f"DB salvato in Turso ({self.db_url})")
+        else:
+            logger.info(f"DB salvato in {self.db_path}")
+            try:
+                logger.info(f"Dimensione DB attuale: {os.path.getsize(self.db_path)} bytes")
+            except OSError:
+                logger.warning(f"Impossibile leggere dimensione DB in {self.db_path}")
 
     def update_med_status(self, node_id: str, status: str, confirmation_time: float) -> None:
         with self.lock:

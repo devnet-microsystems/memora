@@ -8,7 +8,7 @@ import os
 import re
 import logging
 from typing import List, Dict, Iterator, Any
-def load_dotenv(): pass
+from dotenv import load_dotenv
 from openai import OpenAI
 from tenacity import retry, stop_after_attempt, wait_exponential
 
@@ -79,7 +79,7 @@ class NebiusClient:
             The redacted text.
         """
         # Phone numbers: basic pattern
-        text = re.sub(r'\+?\d{2,3}[\s-]?\d{3}[\s-]?\d{4,6}', '[PHONE]', text)
+        text = re.sub(r'\+?\d{2,3}[\s-]?\d{3}[\s-]?\d{4,8}', '[PHONE]', text)
         # Email addresses
         text = re.sub(r'[\w\.-]+@[\w\.-]+\.\w+', '[EMAIL]', text)
         # Fiscal codes (Codice Fiscale)

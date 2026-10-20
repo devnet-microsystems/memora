@@ -20,7 +20,10 @@ def mock_nebius_client():
         yield instance
 
 @pytest.fixture
-def memory(temp_db_path, mock_nebius_client):
+def memory(temp_db_path, mock_nebius_client, monkeypatch):
+    # Force local SQLite for test isolation
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
     return MemoryGraph(db_path=temp_db_path, db_key="test_key")
 
 def test_add_node(memory, mock_nebius_client):

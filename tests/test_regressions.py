@@ -14,7 +14,10 @@ from src.memory import MemoryGraph
 
 
 @pytest.fixture
-def graph(tmp_path):
+def graph(tmp_path, monkeypatch):
+    # Force local SQLite for test isolation
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
     with patch("src.memory.NebiusClient") as mock_client:
         inst = mock_client.return_value
         inst.embed.return_value = [0.1, 0.2, 0.3]

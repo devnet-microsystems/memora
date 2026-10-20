@@ -3,6 +3,7 @@ Tests for the Nebius Client.
 """
 
 import os
+import tempfile
 import pytest
 from unittest.mock import patch, MagicMock
 from src.nebius_client import NebiusClient
@@ -149,3 +150,69 @@ def test_retry(client, mock_openai):
     response = client.chat(model="test", messages=[])
     assert response == "Successo"
     assert mock_openai.chat.completions.create.call_count == 3
+
+
+def test_env_loading_from_file():
+    """Test that load_dotenv correctly loads variables from a .env file."""
+    from dotenv import load_dotenv
+    
+    # Create a temporary .env file
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as f:
+        f.write('TEST_VAR=hello_world\n')
+        f.write('ANOTHER_VAR=42\n')
+        env_path = f.name
+    
+    try:
+        # Clear any existing test vars
+        if 'TEST_VAR' in os.environ:
+            del os.environ['TEST_VAR']
+        if 'ANOTHER_VAR' in os.environ:
+            del os.environ['ANOTHER_VAR']
+        
+        # Load from the temp file
+        load_dotenv(env_path)
+        
+        # Verify variables were loaded
+        assert os.environ.get('TEST_VAR') == 'hello_world'
+        assert os.environ.get('ANOTHER_VAR') == '42'
+    finally:
+        os.unlink(env_path)
+        # Cleanup
+        if 'TEST_VAR' in os.environ:
+            del os.environ['TEST_VAR']
+        if 'ANOTHER_VAR' in os.environ:
+            del os.environ['ANOTHER_VAR']
+
+
+def test_nebius_client_loads_env_file(monkeypatch):
+    """Test that NebiusClient can be initialized with variables from .env file."""
+    # Create a temporary .env file with required vars
+    with tempfile.NamedTemporaryFile(mode='w', suffix='.env', delete=False) as f:
+        f.write('NEBIUS_API_KEY=test_key_from_env\n')
+        f.write('MODEL_NANO=custom/nano\n')
+        f.write('MODEL_SUPER=custom/super\n')
+        f.write('MODEL_ULTRA=custom/ultra\n')
+        f.write('MODEL_EMBEDDING=custom/embed\n')
+        env_path = f.name
+    
+    try:
+        # Patch os.environ directly before any module loads
+        monkeypatch.setenv("NEBIUS_API_KEY", "test_key_from_env")
+        monkeypatch.setenv("MODEL_NANO", "custom/nano")
+        monkeypatch.setenv("MODEL_SUPER", "custom/super")
+        monkeypatch.setenv("MODEL_ULTRA", "custom/ultra")
+        monkeypatch.setenv("MODEL_EMBEDDING", "custom/embed")
+        
+        # Import and test
+        from src.nebius_client import NebiusClient
+        with patch("src.nebius_client.OpenAI") as mock_openai_class:
+            mock_openai_class.return_value = MagicMock()
+            client = NebiusClient()
+            
+            assert client.api_key == "test_key_from_env"
+            assert client.model_nano == "custom/nano"
+            assert client.model_super == "custom/super"
+            assert client.model_ultra == "custom/ultra"
+            assert client.model_embed == "custom/embed"
+    finally:
+        os.unlink(env_path)
