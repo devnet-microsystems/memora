@@ -15,26 +15,26 @@ function initMemoryGraph(containerId, refreshMs = 10000) {
     const options = {
         nodes: {
             shape: "dot",
-            size: 20,
-            font: { size: 14, color: "#fff" },
+            size: 22,
+            font: { size: 14, color: "#1B1B1F" },
             borderWidth: 2
         },
         edges: {
             width: 2,
-            font: { size: 12, align: "middle", color: "#ccc" },
+            font: { size: 12, align: "middle", color: "#55535A" },
             arrows: { to: { enabled: true, scaleFactor: 0.5 } }
         },
         physics: {
             forceAtlas2Based: {
-                gravitationalConstant: -26,
-                centralGravity: 0.005,
-                springLength: 230,
-                springConstant: 0.18
+                gravitationalConstant: -50,
+                centralGravity: 0.01,
+                springLength: 300,
+                springConstant: 0.15
             },
-            maxVelocity: 146,
+            maxVelocity: 100,
             solver: "forceAtlas2Based",
             timestep: 0.35,
-            stabilization: { iterations: 150 }
+            stabilization: { iterations: 200 }
         }
     };
 
