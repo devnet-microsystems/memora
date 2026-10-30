@@ -10,6 +10,11 @@ import requests
 from collections import defaultdict
 from flask import Flask, render_template, jsonify, request, Response, send_from_directory, session
 from werkzeug.middleware.proxy_fix import ProxyFix
+from dotenv import load_dotenv
+
+# Carica Render Secret Files (/etc/secrets/memora-render.env) senza sovrascrivere
+# le variabili d'ambiente già impostate da Render (override=False).
+load_dotenv('/etc/secrets/memora-render.env', override=False)
 
 app = Flask(__name__, static_folder='../dashboard/static/dist', static_url_path='/static/dist')
 # Behind Render/Fly the real client IP is in X-Forwarded-For; without this every visitor shares one rate-limit bucket.

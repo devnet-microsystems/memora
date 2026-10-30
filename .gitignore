@@ -32,3 +32,6 @@ data/*.db.bak*
 *.bak-*
 *.bak
 scripts/demo_assets/
+
+# Render secret files (non tracciati)
+memora-render.env
