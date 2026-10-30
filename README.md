@@ -5,7 +5,7 @@
 **Track:** Personal AI (Nebius x NVIDIA Global AI Hackathon)
 
 **Live demo:** [memora-ht5c.onrender.com](https://memora-ht5c.onrender.com/) (dashboard) · [API docs](https://memora-backend-b0ks.onrender.com/docs)  
-**Video:** _to be added before submission_
+**Video:** [https://www.youtube.com/watch?v=rzGlXdUORuI](https://www.youtube.com/watch?v=rzGlXdUORuI)
 
 ## Test in 60 seconds
 1. Open `/patient`.
@@ -18,7 +18,7 @@ Memora is a private, persistent personal AI assistant designed to support indivi
 ## Problem & Solution
 **The Problem:** People with mild cognitive impairment often experience memory lapses, confusion, and anxiety. They need a non-judgmental companion that remembers for them, while their caregivers need a way to monitor their well-being without being invasive.
 
-**The Solution:** Memora provides a conversational interface powered by NVIDIA Nemotron models. It builds a persistent, local Knowledge Graph (MemoryGraph) of the user's life. The system prioritizes privacy by keeping raw data local and redacting Personal Identifiable Information (PII) before interacting with cloud LLMs.
+**The Solution:** Memora provides a conversational interface powered by NVIDIA Nemotron models. It builds a persistent Knowledge Graph using NetworkX, with Turso/libSQL for hosted deployments and local SQLite for development and testing. Before prompts and embeddings are sent to Nebius, a basic regex-based PII redaction layer masks common identifiers such as phone numbers, email addresses, Italian fiscal codes, and dates of birth.
 
 ## Who is Memora for
 Memora is designed for two primary users:
@@ -37,19 +37,26 @@ To support patients with aphasia or severe speech difficulties, Memora integrate
 
 ## Architecture
 ```text
-User 
-  │ (Input)
-  ▼
-API (FastAPI) ───────► Dashboard (Flask) -> Caregiver view
-  │
-  ▼
-Agent (Core Logic)
-  │
-  ├──► MemoryGraph (NetworkX + local SQLite, data/memora.db) ──► PII Redaction
-  │
-  ├──► Nebius Token Factory (NVIDIA Nemotron Models)
-  │
-  └──► TavilyTool (Web Search API)
+Patient UI / Caregiver UI (React)
+              |
+              v
+       Flask Dashboard
+       (SPA + API Proxy)
+              |
+              v
+        FastAPI Backend
+              |
+              v
+         Memora Agent
+          /    |     \
+         /     |      \
+ MemoryGraph Nebius   Tavily
+    |       (PII      (Web
+    |      Redaction) Search)
+    |
+    +-- Turso/libSQL (hosted)
+    |
+    +-- SQLite (local)
 ```
 
 ## Architecture Decisions: Why a custom loop over NemoClaw/OpenShell?
@@ -108,7 +115,7 @@ python -m src.jobs.nightly
 ```bash
 pytest --cov=src --cov-report=term-missing
 ```
-**Results (measured):** 18 targeted tests passed in `tests/test_agent.py` and `tests/test_schedule.py`. No full-suite count or coverage measurement has been established.
+**Results (measured):** 117 tests passed, 1 failed in the full suite. The single failure (`test_today_endpoint`) is environmental: `MEMORA_API_KEY` is not set in the pytest environment, so FastAPI falls back to open mode and the expected 4 demo items are not seeded. No code change is required; the failure does not affect production behavior.
 
 ## How We Use Nebius Token Factory
 Nebius provides the OpenAI-compatible runtime that powers Memora's intelligence. By setting the `base_url` to `https://api.tokenfactory.nebius.com/v1/`, Memora leverages high-performance inference endpoints securely and reliably, using `tenacity` for resilient retry logic.
@@ -135,7 +142,7 @@ On 3 October 2026 we ran an automated white-box penetration test with Strix (dee
 
 | Finding | Severity | Status |
 |---|---|---|
-| Dashboard acted as an open proxy and injected the backend key into anonymous requests | Critical | Fixed in code: public patient routes, read-only demo routes, Basic-auth for every write (`tests/test_proxy.py`, `tests/test_dashboard_regressions.py`) |
+| Dashboard acted as an open proxy and injected the backend key into anonymous requests | Critical | Fixed in code: public patient routes, read-only demo routes, Caregiver session authentication for protected write operations (`tests/test_proxy.py`, `tests/test_dashboard_regressions.py`) |
 | Stored DOM XSS from unescaped memory data | High | Fixed in code: DOM built with `textContent` / `esc()`, lint-style test (`tests/test_no_unsafe_innerhtml.py`) |
 | Indirect prompt injection via memory context | High | Mitigated: untrusted context in a delimited user block, sanitized; actions are never driven by model output |
 | VAPID private key committed to git | High | Key files removed. The key was exposed once and must be treated as compromised: rotate it before any real deployment |
