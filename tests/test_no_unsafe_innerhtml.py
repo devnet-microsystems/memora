@@ -9,7 +9,8 @@ def test_no_unsafe_innerhtml():
     """
     target_dirs = [
         "dashboard/templates",
-        "dashboard/static"
+        "dashboard/static",
+        "frontend/src"
     ]
     
     # We look for dangerous DOM sinks
@@ -38,8 +39,11 @@ def test_no_unsafe_innerhtml():
     for d in target_dirs:
         for root, _, files in os.walk(d):
             for file in files:
-                if file.endswith(".html") or file.endswith(".js"):
+                if file.endswith(".html") or file.endswith(".js") or file.endswith(".tsx") or file.endswith(".ts"):
                     path = os.path.join(root, file)
+                    # Salta asset minificati generati da Vite (falsi positivi)
+                    if "dist/assets" in path:
+                        continue
                     with open(path, "r", encoding="utf-8") as f:
                         lines = f.readlines()
                         

@@ -4,7 +4,7 @@ Initializes the agent, sets up dependencies, and starts the FastAPI application.
 """
 
 import logging
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 from fastapi import FastAPI, HTTPException, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -26,6 +26,7 @@ logger = logging.getLogger("memora.api")
 class ChatRequest(BaseModel):
     user_input: str
     lang: str = "en"
+    patient_id: Optional[str] = None
 
 class ChatResponse(BaseModel):
     response: str
@@ -50,11 +51,29 @@ class DiaryTurnRequest(BaseModel):
 class DiaryEndRequest(BaseModel):
     session_id: str
 
+class VoicePreviewRequest(BaseModel):
+    text: str
+
+class VoiceFact(BaseModel):
+    type: str
+    label: str
+    description: str
+    when: str
+    content: str
+
+class VoiceConfirmRequest(BaseModel):
+    facts: List[VoiceFact]
+
+
+VoiceConfirmRequest.model_rebuild()
+VoicePreviewRequest.model_rebuild()
+
 class ApprovePendingRequest(BaseModel):
     content: Optional[str] = None
 
 # FastAPI App Setup
 app = FastAPI(title="Memora API", description="Personal AI Backend")
+app.router.redirect_slashes = False
 
 # Enable CORS for local dashboard and specific origins
 cors_origins_str = os.getenv("CORS_ORIGINS", "http://localhost:5001")
@@ -106,7 +125,7 @@ def medication_scheduler_loop():
                 continue
             
             now = now_local()
-            for node_id, data in agent.memory.graph.nodes(data=True):
+            for node_id, data in list(agent.memory.graph.nodes(data=True)):
                 if data.get("type") == "med":
                     state = med_state(data, now)
                     if state == "missed":
@@ -161,17 +180,29 @@ async def startup_event():
 @app.get("/health", response_model=HealthResponse)
 async def health_check():
     """Check API health status."""
-    import os
+    if agent is None:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "initializing", "encrypted": False},
+        )
+
+    db_reachable = False
     try:
-        from sqlcipher3 import dbapi2 as sqlite
-        has_sqlcipher = True
-    except ImportError:
-        has_sqlcipher = False
-    
-    db_key = os.getenv("DB_KEY")
-    is_encrypted = has_sqlcipher and bool(db_key)
-    
-    return {"status": "ok", "encrypted": is_encrypted}
+        with agent.memory._get_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT 1")
+            cursor.fetchone()
+            db_reachable = True
+    except Exception:
+        db_reachable = False
+
+    if not db_reachable:
+        return JSONResponse(
+            status_code=503,
+            content={"status": "db_unreachable", "encrypted": False},
+        )
+
+    return {"status": "ok", "encrypted": False}
 
 @app.post("/chat", response_model=ChatResponse)
 async def chat(request: ChatRequest):
@@ -182,7 +213,7 @@ async def chat(request: ChatRequest):
         raise HTTPException(status_code=500, detail="Agent not initialized")
     
     try:
-        response_text = agent.respond(request.user_input, lang=request.lang)
+        response_text = agent.respond(request.user_input, lang=request.lang, patient_id=request.patient_id)
         return {"response": response_text}
     except Exception as e:
         logger.error(f"Chat error: {e}")
@@ -215,6 +246,8 @@ ALLOWED_NODE_TYPES = {"person", "place", "event", "habit", "med", "preference", 
 async def add_memory(request: MemoryNodeRequest):
     """
     Add a new memory node to the graph.
+    The node is created as 'pending' and requires caregiver approval before
+    becoming a regular memory node.
     """
     if not agent:
         raise HTTPException(status_code=500, detail="Agent not initialized")
@@ -226,8 +259,8 @@ async def add_memory(request: MemoryNodeRequest):
     if request.content and len(request.content) > 500:
         raise HTTPException(status_code=422, detail="Content too long")
     try:
-        agent.memory_add(request.id, request.type, request.content, request.schedule)
-        return {"status": "success", "id": request.id}
+        pending_id = agent.memory_add(request.id, request.type, request.content, request.schedule)
+        return {"status": "pending_approval", "id": pending_id}
     except Exception as e:
         logger.error(f"Failed to add memory: {e}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -397,10 +430,13 @@ async def get_med_status():
 from src.schedule import occurs_on
 
 @app.get("/today")
-async def get_today(lang: str = "en"):
+async def get_today(lang: str = "en", patient_id: str = "patient"):
     if not agent:
         raise HTTPException(status_code=500, detail="Agent not initialized")
-        
+
+    if not agent.memory.graph.has_node(patient_id):
+        raise HTTPException(status_code=404, detail=f"Patient profile '{patient_id}' not found")
+
     from datetime import datetime
     now = now_local()
     now_iso = now.isoformat()
@@ -424,50 +460,78 @@ async def get_today(lang: str = "en"):
     else:
         part_of_day = "Buonasera" if lang == "it" else "Good evening"
         
-    # Patient name
-    patient_name = None
-    if agent.memory.graph.has_node("patient"):
-        patient_data = agent.memory.graph.nodes["patient"]
-        meta = patient_data.get("meta", {})
-        if "name" in meta and meta["name"]:
-            patient_name = meta["name"]
+    # Patient name from requested profile
+    if agent.memory.graph.has_node(patient_id):
+        pdata = agent.memory.graph.nodes[patient_id]
+        pmeta = pdata.get("meta", {}) or {}
+        if pmeta.get("name"):
+            patient_name = pmeta["name"]
         else:
-            content = patient_data.get("content", "")
-            if content:
-                patient_name = content.split()[0].rstrip(",.")
-                
+            pcontent = pdata.get("content", "")
+            patient_name = pcontent.split()[0].rstrip(",.") if pcontent else None
+    else:
+        patient_name = None
+
     items = []
-    
-    # Calculate items
-    for node_id, data in agent.memory.graph.nodes(data=True):
+
+    # Collect candidate node ids: global iteration for the default profile,
+    # deterministic connected-memories path for an explicit profile.
+    candidate_ids = []
+    if patient_id == "patient":
+        # Existing behavior: iterate all med/event/habit nodes with a schedule
+        for node_id, data in agent.memory.graph.nodes(data=True):
+            n_type = data.get("type")
+            if n_type in ["med", "event", "habit"] and data.get("schedule"):
+                candidate_ids.append(node_id)
+    else:
+        # Deterministic path: only this profile's connected memories (no LLM, no embedding)
+        ctx = agent.memory.get_context(patient_id)
+        for edge in ctx.get("outgoing_edges", []) or []:
+            child_id = edge.get("id")
+            if not child_id or not agent.memory.graph.has_node(child_id):
+                continue
+            data = agent.memory.graph.nodes[child_id]
+            if data.get("type") in ["med", "event", "habit"] and data.get("schedule"):
+                candidate_ids.append(child_id)
+
+    # Build items (shared by both paths)
+    for node_id in candidate_ids:
+        data = agent.memory.graph.nodes[node_id]
         n_type = data.get("type")
-        if n_type in ["med", "event", "habit"]:
-            schedule = data.get("schedule")
-            if schedule:
-                occ_time = occurs_on(schedule, now.date())
-                if occ_time:
-                    status = "none"
-                    if n_type == "med":
-                        last_status = data.get("last_status")
-                        last_conf = data.get("last_confirmation")
-                        if last_status and last_conf:
-                            conf_date = datetime.fromtimestamp(last_conf, now.tzinfo).date()
-                            if conf_date == now.date():
-                                status = last_status
-                    
-                    from src.schedule import med_state
-                    items.append({
-                        "id": node_id,
-                        "kind": n_type,
-                        "time": occ_time.strftime("%H:%M"),
-                        "text": data.get("content", ""),
-                        "status": status,
-                        "med_state": med_state(data, now) if n_type == "med" else None,
-                        "due_time": occ_time.strftime("%H:%M")
-                    })
-                    
-    # Sort items by time
-    items.sort(key=lambda x: x["time"])
+        schedule = data.get("schedule")
+        occ_time = occurs_on(schedule, now.date())
+        if not occ_time:
+            continue
+
+        # Distinguish no-time weekday (e.g., "giovedì") from explicit midnight ("00:00")
+        # time(0, 0) means no specific time when the schedule is not in HH:MM format.
+        if occ_time.hour == 0 and occ_time.minute == 0 and not re.match(r'^\d{2}:\d{2}$', schedule or ''):
+            display_time = None
+        else:
+            display_time = occ_time.strftime("%H:%M")
+
+        status = "none"
+        if n_type == "med":
+            last_status = data.get("last_status")
+            last_conf = data.get("last_confirmation")
+            if last_status and last_conf:
+                conf_date = datetime.fromtimestamp(last_conf, now.tzinfo).date()
+                if conf_date == now.date():
+                    status = last_status
+
+        from src.schedule import med_state
+        items.append({
+            "id": node_id,
+            "kind": n_type,
+            "time": display_time,
+            "text": data.get("content", ""),
+            "status": status,
+            "med_state": med_state(data, now) if n_type == "med" else None,
+            "due_time": occ_time.strftime("%H:%M")
+        })
+
+    # Sort items by time (None times last)
+    items.sort(key=lambda x: x["time"] or "99:99")
     
     return {
         "now_iso": now_iso,
@@ -496,6 +560,57 @@ async def onboarding_interview(request: OnboardingRequest):
     if result["status"] == "error":
         raise HTTPException(status_code=500, detail=result.get("detail"))
     return result
+
+
+@app.post("/api/voice/preview")
+async def voice_preview(request: VoicePreviewRequest):
+    """
+    Extract proposed structured facts from voice transcript without persisting.
+    Returns a list of candidate facts for user review.
+    """
+    if not agent:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
+    
+    try:
+        facts = agent.extract_facts_from_text(request.text)
+        return {"status": "success", "facts": facts}
+    except Exception as e:
+        logger.error(f"Voice preview error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/api/voice/confirm")
+async def voice_confirm(request: VoiceConfirmRequest):
+    """
+    Persist confirmed voice-extracted facts as pending nodes for HITL approval.
+    Does not bypass caregiver approval - nodes are created as type 'pending'.
+    """
+    if not agent:
+        raise HTTPException(status_code=500, detail="Agent not initialized")
+    
+    try:
+        nodes_to_add = []
+        for fact in request.facts:
+            fact_id = f"voice_{int(time.time()*1000)}_{abs(hash(fact.content)) % 10000}"
+            nodes_to_add.append({
+                "id": fact_id,
+                "type": "pending",
+                "content": fact.content,
+                "schedule": fact.when if fact.when else None,
+                "meta": {
+                    "proposed_type": fact.type,
+                    "source": "voice",
+                    "event_date": fact.when
+                }
+            })
+        
+        if nodes_to_add:
+            agent.memory.add_nodes(nodes_to_add)
+        
+        return {"status": "success", "created": len(nodes_to_add)}
+    except Exception as e:
+        logger.error(f"Voice confirm error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 

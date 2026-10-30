@@ -5,6 +5,18 @@ from typing import Optional
 
 logger = logging.getLogger("memora.schedule")
 
+# Italian weekday names -> English 3-letter codes, so the existing weekly parser
+# ("MON,THU HH:MM") can understand Italian schedules such as "giovedì 09:00".
+_IT_WEEKDAYS: dict[str, str] = {
+    "LUNEDÌ": "MON", "LUNEDI": "MON",
+    "MARTEDÌ": "TUE", "MARTEDI": "TUE",
+    "MERCOLEDÌ": "WED", "MERCOLEDI": "WED",
+    "GIOVEDÌ": "THU", "GIOVEDI": "THU",
+    "VENERDÌ": "FRI", "VENERDI": "FRI",
+    "SABATO": "SAT",
+    "DOMENICA": "SUN",
+}
+
 def occurs_on(schedule_str: str, target_date: date) -> Optional[time]:
     """
     Checks if a given schedule string occurs on a specific date.
@@ -14,11 +26,23 @@ def occurs_on(schedule_str: str, target_date: date) -> Optional[time]:
     - "HH:MM" -> every day
     - "MON,THU HH:MM" -> specific week days (MON TUE WED THU FRI SAT SUN)
     - "YYYY-MM-DD HH:MM" -> single specific date
+    - "giovedì" -> single Italian weekday, all day (no specific time)
     """
     if not schedule_str:
         return None
         
-    schedule_str = schedule_str.strip()
+    schedule_str = schedule_str.strip().upper()
+    # Normalize Italian weekday names to English 3-letter codes before parsing.
+    for it, en in _IT_WEEKDAYS.items():
+        schedule_str = schedule_str.replace(it, en)
+    
+    # 0. Single Italian weekday name (e.g., "giovedì", "lunedì") - all day, no specific time
+    if schedule_str in ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]:
+        weekdays = ["MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"]
+        target_weekday = weekdays[target_date.weekday()]
+        if schedule_str == target_weekday:
+            return time(0, 0)
+        return None
     
     # 1. "HH:MM"
     m1 = re.match(r"^(\d{2}):(\d{2})$", schedule_str)

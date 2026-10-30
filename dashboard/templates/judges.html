@@ -48,7 +48,7 @@
     </script>
 <script src="/static/util.js"></script></head>
 <body>
-    <span id="db-encrypted-badge" class="badge" style="float: right;">DB Encrypted: Checking...</span>
+    <span id="db-encrypted-badge" class="badge" style="float: right;">Application-level DB encryption: Checking...</span>
     <h1 style="color: var(--primary); margin-bottom: 30px;">Memora — Technical Overview for Judges</h1>
 
     <div class="card section">
@@ -103,7 +103,7 @@
                 <tr>
                     <td><strong>Memory Graph DB</strong></td>
                     <td><span class="badge badge-success">REAL</span></td>
-                    <td>Local SQLite encrypted with SQLCipher. Real RAG over the graph.</td>
+                    <td>Turso libSQL (remote, encrypted at rest by Turso). Real RAG over the graph.</td>
                 </tr>
                 <tr>
                     <td><strong>Patient History</strong></td>
@@ -127,7 +127,7 @@
             Dash["Caregiver Dashboard"] <-->|HTTPS| API
             API --> Nebius["Nebius Token Factory"]
             API --> Tavily["Tavily Search API"]
-            API <--> DB[("SQLCipher Memory Graph")]
+            API <--> DB[("Turso libSQL Memory Graph")]
         </pre>
     </div>
 
@@ -155,10 +155,10 @@
             .then(d => {
                 const badge = document.getElementById('db-encrypted-badge');
                 if(d.encrypted) {
-                    badge.innerText = "DB Encrypted: YES 🔒";
+                    badge.innerText = "Application-level DB encryption: YES 🔒";
                     badge.classList.add('badge-success');
                 } else {
-                    badge.innerText = "DB Encrypted: NO ⚠️";
+                    badge.innerText = "Application-level DB encryption: NO ⚠️";
                     badge.classList.add('badge-danger');
                 }
             }).catch(e => console.error(e));

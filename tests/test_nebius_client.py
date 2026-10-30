@@ -184,6 +184,72 @@ def test_env_loading_from_file():
             del os.environ['ANOTHER_VAR']
 
 
+def test_redact_synthetic_pii(client):
+    """Test PII redaction with synthetic data (no real PII)."""
+    synthetic = "Mi chiamo Mario Esempio, email mario@example.invalid, telefono 0000000000"
+    redacted = client._redact(synthetic)
+
+    # Original values must not survive redaction
+    assert "mario@example.invalid" not in redacted
+    assert "0000000000" not in redacted
+    # Redaction markers must be present
+    assert "[EMAIL]" in redacted
+    assert "[PHONE]" in redacted
+    # Non-PII content (name) is preserved
+    assert "Mario Esempio" in redacted
+
+
+def test_chat_payload_redacted_synthetic(client, mock_openai):
+    """Test chat payload does not contain original synthetic PII."""
+    mock_response = MagicMock()
+    mock_response.choices = [MagicMock()]
+    mock_response.choices[0].message.content = "Risposta"
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 10
+    mock_response.usage.completion_tokens = 5
+    mock_openai.chat.completions.create.return_value = mock_response
+
+    synthetic = "Mi chiamo Mario Esempio, email mario@example.invalid, telefono 0000000000"
+    client.chat(model="test", messages=[{"role": "user", "content": synthetic}])
+
+    _, kwargs = mock_openai.chat.completions.create.call_args
+    payload = kwargs["messages"][0]["content"]
+    assert "mario@example.invalid" not in payload
+    assert "0000000000" not in payload
+    assert "[EMAIL]" in payload
+    assert "[PHONE]" in payload
+
+
+def test_embed_payload_redacted_synthetic(client, mock_openai):
+    """Test embed payload does not contain original synthetic PII."""
+    mock_response = MagicMock()
+    mock_response.data = [MagicMock()]
+    mock_response.data[0].embedding = [0.1, 0.2]
+    mock_response.usage = MagicMock()
+    mock_response.usage.prompt_tokens = 10
+    mock_openai.embeddings.create.return_value = mock_response
+
+    synthetic = "Mi chiamo Mario Esempio, email mario@example.invalid, telefono 0000000000"
+    client.embed(synthetic)
+
+    _, kwargs = mock_openai.embeddings.create.call_args
+    payload = kwargs["input"]
+    assert "mario@example.invalid" not in payload
+    assert "0000000000" not in payload
+    assert "[EMAIL]" in payload
+    assert "[PHONE]" in payload
+
+
+def test_chat_redactor_failure_does_not_send(client, mock_openai):
+    """If the redactor fails, chat must not send the original text to Nebius."""
+    with patch.object(client, "_redact", side_effect=Exception("redactor failed")):
+        with pytest.raises(Exception):
+            client.chat(model="test", messages=[{"role": "user", "content": "sensitive data"}])
+
+    # The OpenAI create call must never have been reached (redactor runs before it)
+    assert mock_openai.chat.completions.create.call_count == 0
+
+
 def test_nebius_client_loads_env_file(monkeypatch):
     """Test that NebiusClient can be initialized with variables from .env file."""
     # Create a temporary .env file with required vars

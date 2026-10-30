@@ -46,17 +46,6 @@ body {
     font-weight: bold;
 }
 
-.lang-select {
-    font-size: var(--font-base);
-    padding: 10px;
-    border-radius: 8px;
-    border: 2px solid var(--border);
-    background: var(--surface);
-    color: var(--text-primary);
-    min-height: 48px; /* accessibility */
-    cursor: pointer;
-}
-
 /* Focus styles for accessibility */
 *:focus-visible {
     outline: 4px solid var(--primary);
@@ -65,8 +54,6 @@ body {
 
 /* Cards */
 .card {
-    background: var(--surface);
-    border: 1px solid var(--border);
     border-radius: 16px;
     padding: 20px;
     box-shadow: 0 4px 6px rgba(0,0,0,0.05);
@@ -331,4 +318,68 @@ body {
     z-index: 200;
     display: none;
     box-sizing: border-box;
+}
+
+/* ---------- Transcript Preview Overlay ---------- */
+.preview-overlay {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 16px;
+    padding: 24px;
+    max-width: 90vw;
+    max-height: 80vh;
+    z-index: 1000;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    box-sizing: border-box;
+    overflow-y: auto;
+}
+
+.preview-card {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 4px;
+}
+
+.preview-header h3 {
+    margin: 0;
+    color: var(--text-primary);
+    font-size: 1.25rem;
+    font-weight: 700;
+}
+
+.preview-hint {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    margin: 0 0 12px 0;
+}
+
+.preview-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+    margin-top: 8px;
+}
+
+.preview-overlay .btn {
+    min-height: 44px;
+    padding: 10px 20px;
+    font-size: 1rem;
+}
+
+.preview-overlay .btn-primary {
+    background-color: var(--primary);
+    border-color: var(--primary);
+    color: white !important;
 }

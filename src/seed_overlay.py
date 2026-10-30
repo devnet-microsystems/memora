@@ -10,11 +10,11 @@ from typing import Any, Dict
 
 from src.demo_events import demo_events
 
-DROP_NODES = {"med_test"}
-RENAME_NODES = {"maria_utente": "patient"}          # the seed had two patient nodes
+DROP_NODES = {"med_test", "med_xss", "med_normal_test"}
+RENAME_NODES = {"maria_user": "patient"}          # the seed had two patient nodes
 NODE_OVERRIDES: Dict[str, Dict[str, Any]] = {
-    "pillola_pressione": {"schedule": "08:00"},
-    "passeggiata_parco": {"schedule": "10:30"},
+    "blood_pressure_pill": {"schedule": "08:00"},
+    "park_walk": {"schedule": "10:30"},
     "patient": {"meta": {"name": "Maria"}},
 }
 

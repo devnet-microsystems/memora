@@ -41,7 +41,7 @@
 **Visual**: Animated architecture diagram (from README)
 **Key points**:
 - FastAPI backend + Flask dashboard
-- MemoryGraph: NetworkX + SQLCipher (encrypted, local)
+- MemoryGraph: NetworkX + Turso libSQL (encrypted at rest by Turso)
 - **Nemotron-3 Nano**: Intent classification (<1.5s)
 - **Nemotron-3 Super**: Empathetic dialogue (~2.7s)
 - **Nemotron-3 Ultra**: Reports & onboarding (~14s)
@@ -78,7 +78,7 @@
 **Text**:
 - GitHub: github.com/devnet-microsystems/memora
 - Demo: memora-ht5c.onrender.com
-- API Docs: memora-y2ebcg.fly.dev/docs
+- API Docs: memora-backend-b0ks.onrender.com/docs
 **Voice**: "Memora—private, persistent, privacy-first. Built for the vulnerable, not the viral. Thank you."
 
 ---
@@ -126,7 +126,7 @@ If time-constrained:
 ## Judges Checklist (from `/judges` route)
 - [ ] Nemotron 3-tier routing demonstrated
 - [ ] Nebius Token Factory integration shown
-- [ ] Persistent MemoryGraph (SQLCipher) shown
+- [ ] Persistent MemoryGraph (Turso libSQL) shown
 - [ ] PII redaction before cloud calls
 - [ ] Tavily live search for local data
 - [ ] SOS instant alert + caregiver ack

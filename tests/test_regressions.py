@@ -111,7 +111,7 @@ def test_demo_seed_ships_simulated_history_and_no_test_leftovers():
     assert "med_test" not in ids and "maria_utente" not in ids and ids.count("patient") == 1
     node = {n["id"]: n for n in seed["nodes"]}
     assert node["patient"]["meta"]["name"] == "Maria"
-    assert node["pillola_pressione"]["schedule"] == "08:00"
+    assert node["blood_pressure_pill"]["schedule"] == "08:00"
     assert all(e["source"] in ids and e["target"] in ids for e in seed["edges"])
     for n in seed["nodes"]:
         assert n.get("embedding"), f"seed node {n['id']} has no embedding"

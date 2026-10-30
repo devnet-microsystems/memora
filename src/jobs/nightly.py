@@ -156,19 +156,25 @@ def run_nightly_consolidation():
     # 5. Encrypted Backup of the graph
     logger.info("5. Performing database backup...")
     try:
-        db_path = memory.db_path
-        if os.path.exists(db_path):
-            backup_dir = os.path.join(os.path.dirname(db_path), "backups")
-            os.makedirs(backup_dir, exist_ok=True)
-            
-            timestamp = now_local().strftime("%Y%m%d_%H%M%S")
-            backup_path = os.path.join(backup_dir, f"memora_backup_{timestamp}.db")
-            
-            # Local DB is already encrypted via SQLCipher if configured
-            shutil.copy2(db_path, backup_path)
-            logger.info(f"Backup saved to {backup_path}")
+        if getattr(memory, "use_turso", False):
+            logger.warning(
+                "Turso mode: remote database backup is not supported by this job. "
+                "Skipping file copy backup."
+            )
         else:
-            logger.warning(f"Source DB {db_path} not found. Cannot backup.")
+            db_path = memory.db_path
+            if os.path.exists(db_path):
+                backup_dir = os.path.join(os.path.dirname(db_path), "backups")
+                os.makedirs(backup_dir, exist_ok=True)
+                
+                timestamp = now_local().strftime("%Y%m%d_%H%M%S")
+                backup_path = os.path.join(backup_dir, f"memora_backup_{timestamp}.db")
+                
+                # Local DB is already encrypted via SQLCipher if configured
+                shutil.copy2(db_path, backup_path)
+                logger.info(f"Backup saved to {backup_path}")
+            else:
+                logger.warning(f"Source DB {db_path} not found. Cannot backup.")
     except Exception as e:
         logger.error(f"Backup failed: {e}")
         

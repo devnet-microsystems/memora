@@ -176,3 +176,426 @@ img, svg { max-width: 100%; }
     body { background: #fff !important; font-size: 12pt; }
     .card { box-shadow: none !important; break-inside: avoid; }
 }
+
+/* ========================================================================
+   MEMORA COMMAND CENTER — scoped to .caregiver body class only
+   These styles apply ONLY to /caregiver (index.html with body.caregiver).
+   Landing, story, judges pages keep the original warm theme above.
+   ======================================================================== */
+
+/* Command Center CSS variables (overrides for caregiver only) */
+body.caregiver :root {
+    /* Deep midnight navy base */
+    --bg-color: #070A17;
+    --bg-soft: #0B1021;
+    --bg-panel: rgba(15, 20, 33, 0.85);
+    --text-primary: #F5F7FA;
+    --text-muted: #9AA7BA;
+    /* Restrained accents */
+    --primary: #38BDF8;        /* cyan */
+    --primary-dark: #0EA5E9;
+    --primary-soft: rgba(56, 189, 248, 0.15);
+    --accent-blue: #60A5FA;    /* electric blue */
+    --accent-blue-soft: rgba(96, 165, 250, 0.15);
+    --accent-purple: #A78BFA;  /* restrained purple */
+    --accent-purple-soft: rgba(167, 139, 250, 0.15);
+    --accent-green: #34D399;   /* electric green */
+    --accent-green-soft: rgba(52, 211, 153, 0.15);
+    --success: #22D3EE;        /* cyan-green */
+    --success-soft: rgba(34, 211, 238, 0.15);
+    --warning-soft: rgba(251, 191, 36, 0.15);
+    --warning-text: #FBBF24;
+    --danger: #FB7185;         /* soft rose */
+    --danger-soft: rgba(251, 113, 133, 0.15);
+    /* Surface & borders */
+    --surface: rgba(255, 255, 255, 0.06);
+    --surface-strong: rgba(255, 255, 255, 0.14);
+    --border: rgba(255, 255, 255, 0.08);
+    --border-strong: rgba(255, 255, 255, 0.16);
+    --radius: 14px;
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.35), 0 1px 2px rgba(0,0,0,0.15);
+    --shadow-md: 0 10px 30px rgba(0,0,0,0.45), 0 2px 8px rgba(0,0,0,0.25);
+    --shadow-lg: 0 24px 48px rgba(0,0,0,0.55);
+    --glow-primary: rgba(56, 189, 248, 0.45);
+    --glow-purple: rgba(167, 139, 250, 0.35);
+    --glow-danger: rgba(251, 113, 133, 0.35);
+}
+
+body.caregiver {
+    background: radial-gradient(circle at 20% 30%, rgba(56, 189, 248, 0.08) 0%, transparent 40%), radial-gradient(circle at 80% 70%, rgba(167, 139, 250, 0.06) 0%, transparent 40%), linear-gradient(180deg, #070A17 0%, #0B1021 45%, #070A17 100%) fixed !important;
+    color: var(--text-primary) !important;
+    font-family: 'Atkinson Hyperlegible', system-ui, -apple-system, 'Segoe UI', sans-serif !important;
+    font-size: 18px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+body.caregiver :focus-visible { outline: 3px solid var(--primary); outline-offset: 3px; border-radius: 6px; }
+
+/* ---------- Command Center cards ---------- */
+body.caregiver .card {
+    background: var(--surface) !important;
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    box-shadow: var(--shadow-sm) !important;
+    margin-bottom: 24px;
+    padding: 24px;
+    transition: box-shadow .25s ease, transform .2s ease, border-color .25s ease, background .25s ease;
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+}
+body.caregiver .card:hover { box-shadow: var(--shadow-md) !important; border-color: var(--border-strong) !important; background: var(--surface-strong) !important; }
+body.caregiver .card-title {
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    margin-bottom: 16px;
+    font-size: 1.35rem;
+    display: flex; align-items: center; gap: 10px;
+    letter-spacing: -0.01em;
+}
+
+/* ---------- Command Center buttons ---------- */
+body.caregiver .btn {
+    border-radius: 12px !important;
+    font-weight: 700 !important;
+    padding: 12px 22px !important;
+    min-height: 48px;
+    border: 2px solid transparent;
+    transition: background-color .15s ease, transform .1s ease, box-shadow .15s ease;
+}
+body.caregiver .btn:active { transform: translateY(1px); }
+body.caregiver .btn-primary {
+    background-color: var(--primary) !important;
+    border-color: var(--primary) !important;
+    color: #002230 !important;
+    box-shadow: 0 2px 0 rgba(14, 165, 233, 0.4);
+}
+body.caregiver .btn-primary:hover { background-color: var(--primary-dark) !important; border-color: var(--primary-dark) !important; box-shadow: 0 0 0 var(--glow-primary); }
+body.caregiver .btn-primary:disabled, body.caregiver .btn:disabled { opacity: .55; cursor: not-allowed; box-shadow: none; }
+body.caregiver .btn-danger { background: var(--danger) !important; border-color: var(--danger) !important; color: #fff !important; }
+body.caregiver .btn-outline { background: transparent; border-color: var(--primary); color: var(--primary); }
+
+/* ---------- Command Center forms ---------- */
+body.caregiver .form-group { margin-bottom: 14px; }
+body.caregiver label { font-weight: 700; margin-bottom: 6px; display: inline-block; color: var(--text-primary); }
+body.caregiver .form-control, body.caregiver select, body.caregiver textarea, body.caregiver input[type=text], body.caregiver input[type=time] {
+    width: 100%;
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 12px 14px;
+    font-size: 1rem;
+    font-family: inherit;
+    color: var(--text-primary);
+    min-height: 48px;
+}
+body.caregiver .form-control:focus, body.caregiver select:focus, body.caregiver textarea:focus { border-color: var(--primary); outline: none; box-shadow: 0 0 0 3px rgba(56,189,248,.25); }
+
+/* ---------- Command Center badges & chips ---------- */
+body.caregiver .badge {
+    display: inline-block;
+    padding: 6px 12px !important;
+    border-radius: 999px !important;
+    font-weight: 700 !important;
+    font-size: .85rem;
+    backdrop-filter: blur(6px);
+}
+body.caregiver .badge-primary { background: var(--primary) !important; color: #002230 !important; box-shadow: 0 0 12px var(--glow-primary); }
+body.caregiver .badge-success, body.caregiver .badge-green { background: var(--success-soft) !important; color: #00343C !important; }
+body.caregiver .badge-purple { background: var(--accent-purple-soft) !important; color: #1E1B4B !important; border: 1px solid var(--accent-purple); }
+body.caregiver .badge-danger, body.caregiver .badge-red { background: var(--danger-soft) !important; color: #4F0D17 !important; }
+body.caregiver .badge-orange { background-color: var(--warning-soft) !important; color: #713F12 !important; }
+body.caregiver .badge-accent-blue { background: var(--accent-blue-soft) !important; color: #1E3A8A !important; border: 1px solid var(--accent-blue); }
+
+/* ---------- Command Center tables ---------- */
+body.caregiver table { width: 100%; border-collapse: separate; border-spacing: 0; overflow: hidden; border-radius: 12px; background: var(--surface); border: 1px solid var(--border); }
+body.caregiver th, body.caregiver td { padding: 14px 12px; text-align: left; border-bottom: 1px solid var(--border); color: var(--text-primary); }
+body.caregiver th { font-weight: 700; color: var(--text-muted); background-color: rgba(255,255,255,0.03); font-size: .85rem; text-transform: uppercase; letter-spacing: .04em; }
+body.caregiver tbody tr:hover { background: rgba(255,255,255,0.04); }
+body.caregiver tbody tr:last-child td { border-bottom: none; }
+
+/* ---------- Command Center top nav ---------- */
+body.caregiver nav {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 24px;
+    flex-wrap: wrap;
+}
+body.caregiver nav a {
+    color: var(--primary);
+    text-decoration: none;
+    font-weight: 700;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid transparent;
+}
+body.caregiver nav a:hover {
+    background: var(--surface);
+    border-color: var(--border-strong);
+    color: var(--primary-dark);
+}
+
+/* ---------- Command Center summary bar ---------- */
+body.caregiver .summary-bar {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: rgba(15, 20, 33, 0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+    padding: 14px 20px;
+    margin-bottom: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+body.caregiver .summary-bar .patient-name {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--primary);
+}
+body.caregiver .summary-chips {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+body.caregiver .chip {
+    background: var(--primary-soft);
+    color: #002230;
+    border-radius: 999px;
+    padding: 6px 14px;
+    font-weight: 700;
+    font-size: .85rem;
+    white-space: nowrap;
+}
+body.caregiver .chip.alert-chip {
+    background: var(--danger-soft);
+    color: #4F0D17;
+    border-color: var(--danger-soft);
+}
+
+/* ---------- Command Center alerts ---------- */
+body.caregiver .alert-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border-radius: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    background: var(--surface);
+    border: 1px solid var(--border);
+}
+body.caregiver .alert-unhandled {
+    background: var(--danger-soft);
+    color: #4F0D17;
+    border-color: var(--danger-soft);
+}
+body.caregiver .alert-unhandled .btn {
+    background-color: var(--danger) !important;
+    border-color: var(--danger) !important;
+    color: #fff !important;
+}
+
+/* ---------- Command Center graph / media ---------- */
+body.caregiver #network, body.caregiver #graph-container, body.caregiver #graph {
+    border: 1px solid var(--border) !important;
+    border-radius: var(--radius) !important;
+    background: #05050a !important;
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+    backdrop-filter: blur(6px);
+}
+body.caregiver pre, body.caregiver code { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 2px 6px; color: var(--text-primary); }
+
+/* ---------- Command Center responsive ---------- */
+@media (max-width: 640px) {
+    body.caregiver { font-size: 17px; }
+    body.caregiver .card { padding: 16px; }
+    body.caregiver .summary-chips { display: flex; overflow-x: auto; gap: 8px; padding-bottom: 6px; }
+    body.caregiver table { display: block; overflow-x: auto; }
+    body.caregiver nav { flex-direction: column; align-items: stretch; gap: 6px; }
+    body.caregiver nav a { display: block; text-align: center; }
+}
+
+@media (max-width: 768px) {
+    body.caregiver .sidebar {
+        position: fixed;
+        left: -260px;
+        top: 0;
+        width: 260px;
+        height: 100vh;
+        z-index: 200;
+        transition: transform 0.3s ease;
+    }
+    body.caregiver .sidebar.open {
+        transform: translateX(260px);
+    }
+    body.caregiver .sidebar-toggle {
+        display: block;
+    }
+    body.caregiver #main-content {
+        margin-left: 0;
+        padding-top: 80px;
+    }
+    body.caregiver .top-header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 150;
+    }
+    body.caregiver .nav-item {
+        padding: 14px 20px;
+        font-size: 1rem;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    body.caregiver *, body.caregiver *::before, body.caregiver *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+}
+
+@media print {
+    body.caregiver .no-print { display: none !important; }
+    body.caregiver { background: #fff !important; font-size: 12pt; color: #000 !important; }
+    body.caregiver .card { box-shadow: none !important; break-inside: avoid; background: #fff !important; color: #000 !important; }
+}
+
+/* ---------- Command Center Sidebar Navigation ---------- */
+body.caregiver .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    background: rgba(11, 16, 33, 0.82) !important;
+    border-right: 1px solid var(--border) !important;
+    z-index: 100;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.3s ease;
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+}
+body.caregiver .sidebar-header {
+    padding: 20px 20px 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, var(--primary), var(--accent-purple));
+    background-clip: text;
+    -webkit-background-clip: text;
+    color: transparent;
+}
+body.caregiver .sidebar-logo {
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    background: linear-gradient(90deg, var(--primary), var(--accent-purple));
+    -webkit-background-clip: text;
+    color: transparent;
+}
+body.caregiver .nav-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    flex: 1;
+    overflow-y: auto;
+}
+body.caregiver .nav-item {
+    width: 100%;
+    padding: 13px 22px;
+    text-align: left;
+    border: none;
+    background: transparent;
+    color: var(--text-muted);
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.22s ease;
+    border-left: 3px solid transparent;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+body.caregiver .nav-item:hover {
+    background: var(--surface);
+    color: var(--text-primary);
+    border-left: 3px solid var(--border-strong);
+}
+body.caregiver .nav-item.active {
+    background: var(--primary-soft);
+    color: var(--primary);
+    border-left: 3px solid var(--primary);
+    box-shadow: inset 0 0 16px var(--glow-primary);
+}
+body.caregiver .sidebar-footer {
+    padding: 20px;
+    border-top: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+    backdrop-filter: blur(8px);
+}
+body.caregiver .sidebar-toggle {
+    display: none;
+    position: fixed;
+    top: 12px;
+    left: 12px;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+}
+body.caregiver .hamburger {
+    display: block;
+    width: 20px;
+    height: 2px;
+    background: var(--text-primary);
+    margin: 4px 0;
+    border-radius: 2px;
+}
+
+/* ---------- Command Center Main content area ---------- */
+body.caregiver #main-content {
+    margin-left: 260px;
+    min-height: 100vh;
+    padding: 0;
+}
+body.caregiver .top-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 24px;
+    background: rgba(15, 20, 33, 0.6);
+    backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+}
+body.caregiver .top-header h1 {
+    margin: 0;
+    font-size: 1.5rem;
+    color: var(--text-primary);
+}
+body.caregiver .header-right {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+/* ---------- Command Center Page sections ---------- */
+body.caregiver .page-section {
+    display: none;
+}
+body.caregiver .page-section.active {
+    display: block;
+}
+
+/* Cards inside sections keep their existing styling but remove bottom margin for last card */
+body.caregiver .page-section .card {
+    margin-bottom: 16px;
+}

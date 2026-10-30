@@ -79,6 +79,37 @@ def test_check_anomaly(agent, mock_dependencies):
     is_anomalous = agent.check_anomaly(["Ciao", "Che ore sono?"])
     assert is_anomalous is False
 
+def test_system_prompt_capability_rules(agent):
+    """System prompt must instruct the model not to claim vision or physical actions."""
+    prompt = MemoraAgent.SYSTEM_PROMPT
+    assert "NEVER claim to see the patient or their environment" in prompt
+    assert "physical actions" in prompt
+    assert "contacting the caregiver" in prompt
+    assert "physical need" in prompt
+
+
+@patch('src.agent.MemoraAgent._extract_pending_fact')
+def test_respond_uses_requested_language(mock_extract, agent, mock_dependencies):
+    """The lang instruction must be appended to the system message for the model."""
+    mock_dependencies["memory"].search.return_value = []
+    mock_dependencies["memory"].count_recent_similar_interactions.return_value = 0
+    mock_dependencies["nebius"].chat.return_value = "Response"
+    mock_dependencies["nebius"].embed.return_value = [0.1] * 8
+
+    agent.respond("I need water", lang="en")
+
+    _, kwargs = mock_dependencies["nebius"].chat.call_args
+    system_content = kwargs["messages"][0]["content"]
+    assert "Reply in English." in system_content
+    assert "NEVER claim to see the patient" in system_content
+
+    agent.respond("Ho bisogno d'acqua", lang="it")
+
+    _, kwargs = mock_dependencies["nebius"].chat.call_args
+    system_content = kwargs["messages"][0]["content"]
+    assert "Rispondi in italiano." in system_content
+
+
 def test_tools(agent, mock_dependencies):
     """Test that agent correctly exposes and delegates tool calls."""
     agent.memory_search("test")
@@ -192,3 +223,209 @@ def test_process_onboarding_interview(agent, mock_dependencies):
             edge_created = True
             break
     assert edge_created, "Edge from patient not added"
+
+
+def test_respond_skip_preprocessing_super_chat_only_keys(agent, mock_dependencies):
+    """Test that skip_preprocessing=True invokes exactly one model_super chat call,
+    zero embed calls, no quick_intent, and no _extract_pending_fact for the
+    'Where are my house keys?' question with patient_id='maria_rossi'."""
+    # Mock get_context to return Maria Rossi's connected memories
+    mock_ctx = {
+        "node": {"id": "maria_rossi", "content": "Maria Rossi, 74 anni, vive a Milano.", "type": "person"},
+        "outgoing_edges": [
+            {"id": "mem_giulia_calls"},
+            {"id": "mem_keys_location"},
+        ],
+    }
+    mock_dependencies["memory"].get_context.return_value = mock_ctx
+    mock_dependencies["memory"].graph.has_node.return_value = True
+
+    mock_keys = {"type": "fact", "content": "Le chiavi di casa si tengono nel cassetto vicino all'ingresso."}
+    mock_giulia = {"type": "habit", "content": "La figlia Giulia chiama Maria ogni mattina alle 9:00."}
+    mock_dependencies["memory"].graph.nodes.__getitem__.side_effect = lambda nid: (
+        mock_giulia if nid == "mem_giulia_calls" else mock_keys
+    )
+
+    mock_dependencies["nebius"].chat.return_value = "Le chiavi sono nel cassetto vicino all'ingresso."
+
+    response = agent.respond(
+        "Where are my house keys?",
+        patient_id="maria_rossi",
+        skip_preprocessing=True,
+    )
+
+    # Exactly one Nebius chat inference call, model_super
+    assert mock_dependencies["nebius"].chat.call_count == 1
+    _, kwargs = mock_dependencies["nebius"].chat.call_args
+    assert kwargs["model"] == mock_dependencies["nebius"].model_super
+
+    # Zero embed calls
+    assert mock_dependencies["nebius"].embed.call_count == 0
+
+    # No quick_intent call
+    mock_dependencies["nebius"].chat.assert_called_once()
+
+    # No background fact extraction
+    agent.memory.add_nodes.assert_not_called()
+
+    # Deterministic context path used (get_context), not semantic search
+    mock_dependencies["memory"].get_context.assert_called_once_with("maria_rossi")
+    mock_dependencies["memory"].search.assert_not_called()
+    mock_dependencies["memory"].count_recent_similar_interactions.assert_not_called()
+
+    assert response == "Le chiavi sono nel cassetto vicino all'ingresso."
+
+
+def test_respond_skip_preprocessing_super_chat_only_morning(agent, mock_dependencies):
+    """Test that skip_preprocessing=True invokes exactly one model_super chat call,
+    zero embed calls, no quick_intent, and no _extract_pending_fact for the
+    'Who calls me every morning?' question with patient_id='maria_rossi'."""
+    mock_ctx = {
+        "node": {"id": "maria_rossi", "content": "Maria Rossi, 74 anni, vive a Milano.", "type": "person"},
+        "outgoing_edges": [
+            {"id": "mem_giulia_calls"},
+            {"id": "mem_keys_location"},
+        ],
+    }
+    mock_dependencies["memory"].get_context.return_value = mock_ctx
+    mock_dependencies["memory"].graph.has_node.return_value = True
+
+    mock_keys = {"type": "fact", "content": "Le chiavi di casa si tengono nel cassetto vicino all'ingresso."}
+    mock_giulia = {"type": "habit", "content": "La figlia Giulia chiama Maria ogni mattina alle 9:00."}
+    mock_dependencies["memory"].graph.nodes.__getitem__.side_effect = lambda nid: (
+        mock_giulia if nid == "mem_giulia_calls" else mock_keys
+    )
+
+    mock_dependencies["nebius"].chat.return_value = "Giulia ti telefona ogni mattina alle 9:00."
+
+    response = agent.respond(
+        "Who calls me every morning?",
+        patient_id="maria_rossi",
+        skip_preprocessing=True,
+    )
+
+    # Exactly one Nebius chat inference call, model_super
+    assert mock_dependencies["nebius"].chat.call_count == 1
+    _, kwargs = mock_dependencies["nebius"].chat.call_args
+    assert kwargs["model"] == mock_dependencies["nebius"].model_super
+
+    # Zero embed calls
+    assert mock_dependencies["nebius"].embed.call_count == 0
+
+    # No background fact extraction
+    agent.memory.add_nodes.assert_not_called()
+
+    # Deterministic context path used
+    mock_dependencies["memory"].get_context.assert_called_once_with("maria_rossi")
+    mock_dependencies["memory"].search.assert_not_called()
+    mock_dependencies["memory"].count_recent_similar_interactions.assert_not_called()
+
+    assert response == "Giulia ti telefona ogni mattina alle 9:00."
+
+
+def test_respond_default_preserves_embedding_and_quick_intent(agent, mock_dependencies):
+    """Regression test: default skip_preprocessing=False preserves existing behavior
+    (embed called at most once, quick_intent called, final chat call uses model_super)."""
+    mock_dependencies["memory"].search.return_value = [{"content": "Ricordo 1"}]
+    mock_dependencies["memory"].count_recent_similar_interactions.return_value = 0
+    mock_dependencies["nebius"].chat.return_value = "Ciao, come stai?"
+    mock_dependencies["nebius"].embed.return_value = [0.1] * 8
+
+    response = agent.respond("Ciao")
+
+    # Existing behavior: embed called at most once
+    assert mock_dependencies["nebius"].embed.call_count <= 1
+    # Existing behavior: memory.search called
+    mock_dependencies["memory"].search.assert_called_once()
+    # Existing behavior: final chat call
+    assert mock_dependencies["nebius"].chat.call_count >= 1
+
+    assert response == "Ciao, come stai?"
+
+
+def test_respond_profile_isolation(tmp_path, monkeypatch):
+    """Integration: respond() retrieves context only for the requested patient profile.
+
+    Uses a temporary SQLite database (never data/memora.db). Mocks all Nebius,
+    embedding, intent-detection, and Tavily calls. Exercises the real
+    MemoraAgent.respond() method. Verifies that requesting one profile does not
+    expose another profile's facts in the retrieved context or generated response.
+    """
+    from unittest.mock import patch, MagicMock
+
+    monkeypatch.setenv("DB_PATH", str(tmp_path / "test_isolation.db"))
+    monkeypatch.delenv("TURSO_DATABASE_URL", raising=False)
+    monkeypatch.delenv("TURSO_AUTH_TOKEN", raising=False)
+
+    with patch('src.agent.NebiusClient') as mock_nebius_cls, \
+         patch('src.memory.NebiusClient') as mock_mem_nebius_cls, \
+         patch('src.agent.TavilyTool') as mock_tavily_cls:
+
+        nebius = mock_nebius_cls.return_value
+        nebius.embed.return_value = [0.1, 0.2]
+        nebius.model_nano = "nano"
+        nebius.model_super = "super"
+
+        def chat_side_effect(model, messages, **kwargs):
+            if model == "nano":
+                return "INFORMATION"  # quick_intent: not CONFUSION
+            return "Mocked super response"  # model_super final answer
+
+        nebius.chat.side_effect = chat_side_effect
+
+        mem_nebius = mock_mem_nebius_cls.return_value
+        mem_nebius.embed.return_value = [0.1, 0.2]
+        mem_nebius.embed_many.return_value = [[0.1, 0.2]]
+
+        tavily = mock_tavily_cls.return_value
+        tavily.find_pharmacy.return_value = []
+        tavily.find_guardia_medica.return_value = []
+        tavily.find_support_group.return_value = []
+
+        agent = MemoraAgent()
+
+        # Spy on get_context to verify which profile is queried
+        get_context_calls = []
+        original_get_context = agent.memory.get_context
+
+        def spy_get_context(entity_id):
+            get_context_calls.append(entity_id)
+            return original_get_context(entity_id)
+
+        agent.memory.get_context = spy_get_context
+
+        # Build two profiles directly in the in-memory graph
+        g = agent.memory.graph
+        g.add_node("maria_rossi", type="person",
+                   content="Maria Rossi, 74 anni, vive a Milano.", embedding=None)
+        g.add_node("mem_keys_location", type="fact",
+                   content="Le chiavi di casa si tengono nel cassetto vicino all'ingresso.",
+                   embedding=None)
+        g.add_edge("maria_rossi", "mem_keys_location", relation="remembers")
+
+        g.add_node("other_user", type="person",
+                   content="Other user, distinct profile.", embedding=None)
+        g.add_node("mem_other_secret", type="fact",
+                   content="Other user's secret fact about hidden treasure.",
+                   embedding=None)
+        g.add_edge("other_user", "mem_other_secret", relation="remembers")
+
+        # Exercise the real respond() with patient_id="maria_rossi"
+        response = agent.respond("Where are my house keys?", patient_id="maria_rossi")
+
+        # The final answer must not leak the other profile's secret fact
+        assert "Other user's secret fact" not in response
+        assert "hidden treasure" not in response
+
+        # verify get_context was called for maria_rossi, never for other_user
+        assert "maria_rossi" in get_context_calls
+        assert "other_user" not in get_context_calls
+
+        # Verify the super-model chat received Maria's context, not the other profile's
+        super_calls = [c for c in nebius.chat.call_args_list if c.kwargs.get("model") == "super"]
+        assert len(super_calls) >= 1
+        _, super_kwargs = super_calls[-1]
+        user_content = super_kwargs["messages"][1]["content"]
+        assert "Maria Rossi" in user_content
+        assert "Le chiavi di casa si tengono nel cassetto vicino all'ingresso." in user_content
+        assert "Other user's secret fact" not in user_content

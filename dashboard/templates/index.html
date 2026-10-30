@@ -6,125 +6,123 @@
     <title>Caregiver Dashboard</title>
     <link rel="stylesheet" href="/static/theme.css">
     <style>
-        .summary-bar {
+        .preview-overlay {
+            display: none;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--surface);
+            border: 2px solid var(--border);
+            border-radius: 16px;
+            padding: 24px;
+            max-width: 90vw;
+            max-height: 80vh;
+            z-index: 1000;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .preview-card {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .preview-header {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            background: var(--surface);
-            padding: 15px 20px;
-            border-radius: 12px;
-            border: 1px solid var(--border);
-            margin-bottom: 20px;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            flex-wrap: wrap;
-            gap: 15px;
+            gap: 10px;
+            margin-bottom: 4px;
         }
-        .summary-bar .patient-name {
-            font-size: 1.5rem;
-            font-weight: bold;
-            color: var(--primary);
+        .preview-header h3 {
+            margin: 0;
+            color: var(--text-primary);
+            font-size: 1.25rem;
+            font-weight: 700;
         }
-        .summary-chips {
+        .preview-hint {
+            color: var(--text-primary);
+            font-size: 0.95rem;
+            margin: 0 0 12px 0;
+        }
+        .preview-actions {
             display: flex;
             gap: 10px;
-            flex-wrap: wrap;
+            justify-content: flex-end;
+            margin-top: 8px;
         }
-        .chip {
-            background: #f5f3ef;
-            border: 1px solid var(--border);
-            border-radius: 20px;
-            padding: 8px 15px;
-            font-weight: 500;
-            display: flex;
-            align-items: center;
-            gap: 8px;
+        .preview-overlay .btn {
+            min-height: 44px;
+            padding: 10px 20px;
+            font-size: 1rem;
         }
-        .chip.alert-chip {
-            background: var(--danger);
-            color: white;
-            border-color: var(--danger);
-        }
-        
-        .alert-item {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 15px 20px;
-            margin-bottom: 12px;
-            border-radius: 12px;
-            font-size: 16px;
-            font-weight: 500;
-        }
-        .alert-unhandled {
-            background: var(--danger);
-            color: white;
-        }
-        .alert-unhandled .btn {
-            background-color: rgba(255,255,255,0.2);
-            color: white;
-            border: 1px solid rgba(255,255,255,0.4);
-        }
-        .form-group { margin-bottom: 15px; }
-        .form-control { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); box-sizing: border-box; }
-        .settings-section { margin-bottom: 30px; }
-        .settings-title { font-weight: bold; margin-bottom: 15px; font-size: 1.2rem; }
-        
-        @media print {
-            body { background: white; margin: 0; padding: 0; }
-            .card { box-shadow: none; border: none; margin-bottom: 30px; page-break-inside: avoid; }
-            nav, .no-print, #card-settings, #card-onboarding, #card-alerts, #card-meds, #card-stories, #card-timeline, #card-graph { display: none !important; }
+        .preview-overlay .btn-primary {
+            background-color: var(--primary);
+            border-color: var(--primary);
+            color: white !important;
         }
     </style>
+</head>
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://unpkg.com/vis-network@9.1.2/standalone/umd/vis-network.min.js"></script>
+    <script src="https://unpkg.com/3d-force-graph/dist/3d-force-graph.min.js"></script>
     <script src="/static/graph.js"></script>
 <script src="/static/util.js"></script></head>
-<body>
+<body class="caregiver">
 
-    <nav class="no-print" style="margin-bottom: 20px;">
-        <a href="/patient" target="_blank" style="margin-right: 15px; font-weight: bold; text-decoration: none; color: var(--primary);">Patient View</a>
-        <a href="/story" target="_blank" style="margin-right: 15px; font-weight: bold; text-decoration: none; color: var(--primary);">Life Book</a>
-        <a href="/judges" target="_blank" style="margin-right: auto; font-weight: bold; text-decoration: none; color: var(--danger);">Hackathon Judges</a>
-        <select id="lang-selector" onchange="changeLang(this.value)" style="font-size: 1rem; padding: 5px; border-radius: 5px;">
-            <option value="en">EN</option>
-            <option value="it">IT</option>
-        </select>
+    <!-- Persistent Sidebar Navigation -->
+    <nav class="sidebar" id="sidebar">
+        <div class="sidebar-header">
+            <div class="sidebar-logo">🧠 Memora</div>
+        </div>
+        <ul class="nav-list">
+            <li><button class="nav-item active" data-section="overview">📋 Overview</button></li>
+            <li><button class="nav-item" data-section="meds">💊 Medicines</button></li>
+            <li><button class="nav-item" data-section="alerts">🚨 Alerts</button></li>
+            <li><button class="nav-item" data-section="stories">⏳ Pending Approvals</button></li>
+            <li><button class="nav-item" data-section="timeline">👥 People & Routine</button></li>
+            <li><button class="nav-item" data-section="graph">🔍 Memory Graph</button></li>
+            <li><button class="nav-item" data-section="report">📋 Reports</button></li>
+            <li><button class="nav-item" data-section="settings">⚙️ Settings</button></li>
+        </ul>
+        <div class="sidebar-footer">
+            <button id="btn-caregiver-voice-sidebar" class="btn btn-primary" onclick="startCaregiverVoice()" style="width: 100%; margin-top: auto;">🎙️ Speak / Add Memory</button>
+        </div>
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Toggle navigation">
+            <span class="hamburger"></span>
+            <span class="hamburger"></span>
+            <span class="hamburger"></span>
+        </button>
     </nav>
-    
-    <div id="summary-bar" class="summary-bar no-print">
-        <div class="patient-name" id="summary-name">Loading...</div>
-        <div class="summary-chips">
-            <div class="chip" id="summary-meds">💊 Meds: -/-</div>
-            <div class="chip" id="summary-repeats">🔁 Repeats: -</div>
-            <div class="chip" id="summary-alerts">🆘 Alerts: 0</div>
-            <div class="chip" id="summary-last">⏱️ Last: -</div>
-        </div>
-    </div>
 
-    <div id="cards-container">
-    <!-- CARD 0: Memory Graph -->
-    <div class="card" id="card-graph">
-        <h2 class="card-title">🧠 Memory Graph</h2>
-        <div style="margin-bottom: 10px;">
-            <label style="font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">
-                <input type="checkbox" id="show-all-nodes"> Show all nodes (including AAC and pending)
-            </label>
-        </div>
-        <div id="graph-container" style="height: 400px; border: 1px solid var(--border-light); border-radius: var(--radius-md); background: #fafafa;"></div>
-    </div>
+    <!-- Main Content -->
+    <main id="main-content">
+        <header class="top-header no-print">
+            <div class="header-left">
+                <h1 id="page-title">Overview</h1>
+            </div>
+            <div class="header-right">
+                <a href="/patient" target="_blank" style="margin-right: 15px; font-weight: bold; text-decoration: none; color: var(--primary);">Patient View</a>
+                <a href="/story" target="_blank" style="margin-right: 15px; font-weight: bold; text-decoration: none; color: var(--primary);">Life Book</a>
+                <a href="/judges" target="_blank" style="margin-right: 15px; font-weight: bold; text-decoration: none; color: var(--danger);">Hackathon Judges</a>
+            </div>
+        </header>
 
-    <!-- CARD 1: Alerts -->
-    <div class="card" id="card-alerts">
-        <h2 class="card-title">🚨 Alerts</h2>
-        <div id="alerts-list">
-            Loading alerts...
+        <div id="summary-bar" class="summary-bar no-print">
+            <div class="patient-name" id="summary-name">Loading...</div>
+            <div class="summary-chips">
+                <div class="chip" id="summary-meds">💊 Meds: -/-</div>
+                <div class="chip" id="summary-repeats">🔁 Repeats: -</div>
+                <div class="chip" id="summary-alerts">🆘 Alerts: 0</div>
+                <div class="chip" id="summary-last">⏱️ Last: -</div>
+            </div>
         </div>
-    </div>
 
-    <!-- CARD 2: Medications -->
+        <div id="cards-container">
+    <!-- CARD 0: Today's medicines -->
+    <section id="section-meds" class="page-section" data-section="meds">
     <div class="card" id="card-meds">
-        <h2 class="card-title">💊 Medications</h2>
+        <h2 class="card-title">💊 Today's medicines</h2>
         <table>
             <thead>
                 <tr>
@@ -136,22 +134,36 @@
                 </tr>
             </thead>
             <tbody id="meds-list">
-                <tr><td colspan="5">Loading medications...</td></tr>
+                <tr><td colspan="5" style="color: var(--text-muted)">No medications configured.</td></tr>
             </tbody>
         </table>
     </div>
+    </section>
 
-    <!-- CARD 2.1: Stories to review -->
+    <!-- CARD 1: Needs your attention (alerts) -->
+    <section id="section-alerts" class="page-section" data-section="alerts">
+    <div class="card" id="card-alerts">
+        <h2 class="card-title">🚨 Needs your attention</h2>
+        <div id="alerts-list">
+            Loading alerts...
+        </div>
+    </div>
+    </section>
+
+    <!-- CARD 2: Pending approvals -->
+    <section id="section-stories" class="page-section" data-section="stories">
     <div class="card" id="card-stories">
-        <h2 class="card-title">📖 Stories to review</h2>
+        <h2 class="card-title">⏳ Pending approvals</h2>
         <div id="pending-list">
             <span style="color: var(--text-muted)">Loading...</span>
         </div>
     </div>
+    </section>
 
-    <!-- CARD 2.2: Timeline -->
+    <!-- CARD 3: People and daily routine -->
+    <section id="section-timeline" class="page-section" data-section="timeline">
     <div class="card" id="card-timeline">
-        <h2 class="card-title">🕰️ Timeline / Life book</h2>
+        <h2 class="card-title">👥 People & daily routine</h2>
         <div style="margin-bottom: 15px;">
             <a href="/story" class="btn" target="_blank">View Life Book (Printable)</a>
         </div>
@@ -159,8 +171,10 @@
             <span style="color: var(--text-muted)">Loading...</span>
         </div>
     </div>
+    </section>
 
-    <!-- CARD 3: Weekly Report -->
+    <!-- CARD 4: Weekly Report -->
+    <section id="section-report" class="page-section" data-section="report">
     <div class="card" id="card-report">
         <h2 class="card-title">
             📋 Weekly Report
@@ -205,8 +219,10 @@
             <span style="color: var(--text-muted)" class="no-print">Click "Generate" to render the report here.</span>
         </div>
     </div>
+    </section>
 
-    <!-- CARD 4: AI Onboarding -->
+    <!-- CARD 5: AI Onboarding -->
+    <section id="section-onboarding" class="page-section" data-section="onboarding">
     <div class="card" id="card-onboarding">
         <h2 class="card-title">✨ AI Onboarding (Auto-Extract)</h2>
         <p style="color: var(--text-muted); margin-bottom: 20px;">Describe the patient's condition, routines, and family in plain text. Nemotron-3-Ultra will automatically extract and link all relevant information.</p>
@@ -219,8 +235,10 @@
         <div id="dictation-unsupported-msg" style="display: none; color: #595959; font-size: 0.9rem; margin-bottom: 10px;">Voice dictation works in Chrome or Edge. You can type instead.</div>
         <div style="font-size: 0.8rem; color: var(--text-muted); font-style: italic;">Dictation uses your browser's speech service; audio may be processed by the browser vendor.</div>
     </div>
+    </section>
 
-    <!-- CARD 5: Settings -->
+    <!-- CARD 6: Settings -->
+    <section id="section-settings" class="page-section" data-section="settings">
     <div class="card" id="card-settings">
         <h2 class="card-title">⚙️ Settings</h2>
         
@@ -281,15 +299,29 @@
                     <input type="text" id="event-desc" class="form-control" placeholder="e.g. Visita medica" required>
                 </div>
                 <div class="form-group">
-                    <label>Schedule (HH:MM or YYYY-MM-DD HH:MM or MON,TUE HH:MM)</label>
+                    <label>Schedule (HH:MM, YYYY-MM-DD HH:MM, or MON,TUE HH:MM)</label>
                     <input type="text" id="event-schedule" class="form-control" placeholder="e.g. 15:30 or MON,WED 09:00 or 2026-10-05 14:00" required>
                 </div>
                 <button type="submit" class="btn btn-primary">Add Appointment</button>
             </form>
         </div>
     </div>
+    </section>
 
-    </div> <!-- end cards container -->
+    <!-- CARD 7: Explore memory connections (optional, secondary) -->
+    <section id="section-graph" class="page-section" data-section="graph">
+    <div class="card" id="card-graph">
+        <h2 class="card-title">🔍 Explore memory connections</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 10px;">Interactive 3D view of all memories, people, medications, and their relationships. Optional — use the cards above for daily tasks.</div>
+        <div style="margin-bottom: 10px;">
+            <label style="font-size: 14px; font-weight: 500; cursor: pointer; color: var(--text-muted);">
+                <input type="checkbox" id="show-all-nodes"> Show all nodes (including AAC and pending)
+            </label>
+        </div>
+        <div id="graph-container" style="height: 650px; width: 100%; min-width: 0; overflow: hidden; border: 1px solid var(--border); border-radius: var(--radius-md); background: #05050a; position: relative;"></div>
+    </div>
+    </section>
+    </main>
 
     <script>
         function escapeHTML(str) {
@@ -304,19 +336,6 @@
                 }[tag] || tag)
             );
         }
-        let currentLang = localStorage.getItem('memora_lang');
-        if (!currentLang) {
-            currentLang = navigator.language.startsWith('it') ? 'it' : 'en';
-            localStorage.setItem('memora_lang', currentLang);
-        }
-        document.documentElement.lang = currentLang;
-        const preferredLang = currentLang === 'it' ? 'it-IT' : 'en-US';
-
-        function changeLang(lang) {
-            localStorage.setItem('memora_lang', lang);
-            location.reload();
-        }
-
         let recognition;
         let isRecording = false;
 
@@ -325,7 +344,7 @@
                 recognition = new webkitSpeechRecognition();
                 recognition.continuous = true;
                 recognition.interimResults = true;
-                recognition.lang = preferredLang;
+                recognition.lang = 'en-US';
 
                 recognition.onresult = function(event) {
                     let finalTranscript = '';
@@ -456,7 +475,7 @@
             try {
                 const [statsRes, todayRes, memRes] = await Promise.all([
                     fetch('/api/stats'),
-                    fetch('/api/today?lang=' + currentLang),
+                    fetch('/api/today?patient_id=' + PATIENT_ID),
                     fetch('/api/memory')
                 ]);
                 
@@ -516,7 +535,7 @@
 
         async function loadMeds() {
             try {
-                const response = await fetch('/api/med/status');
+                const response = await fetch('/api/med/status?patient_id=' + PATIENT_ID);
                 const data = await response.json();
                 const tbody = document.getElementById('meds-list');
                 tbody.textContent = '';
@@ -677,14 +696,26 @@
             const name = document.getElementById('med-name').value;
             const time = document.getElementById('med-time').value;
             const id = "med_" + Date.now();
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: 'med', content: name, schedule: time})
-            });
-            e.target.reset();
-            loadMeds();
-            alert("Medication added.");
+            try {
+                const response = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: 'med', content: name, schedule: time})
+                });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.status === 'pending_approval') {
+                    alert("Medication submitted for caregiver approval.");
+                } else {
+                    alert("Medication added.");
+                }
+                e.target.reset();
+                loadMeds();
+            } catch (err) {
+                alert("Error adding medication: " + err.message);
+            }
         }
 
         async function addContact(e) {
@@ -693,13 +724,25 @@
             const phone = document.getElementById('contact-phone').value;
             const relation = document.getElementById('contact-relation').value;
             const id = "person_" + Date.now();
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: 'person', content: `${name} (${relation}) - Tel: ${phone}`})
-            });
-            e.target.reset();
-            alert("Contact added.");
+            try {
+                const response = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: 'person', content: `${name} (${relation}) - Tel: ${phone}`})
+                });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.status === 'pending_approval') {
+                    alert("Contact submitted for caregiver approval.");
+                } else {
+                    alert("Contact added.");
+                }
+                e.target.reset();
+            } catch (err) {
+                alert("Error adding contact: " + err.message);
+            }
         }
 
         async function addCAA(e) {
@@ -707,13 +750,25 @@
             const text = document.getElementById('caa-text').value;
             const icon = document.getElementById('caa-icon').value;
             const id = "caa_" + Date.now();
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: 'caa_button', content: `${icon} ${text}`})
-            });
-            e.target.reset();
-            alert("AAC Button added.");
+            try {
+                const response = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: 'caa_button', content: `${icon} ${text}`})
+                });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.status === 'pending_approval') {
+                    alert("AAC button submitted for caregiver approval.");
+                } else {
+                    alert("AAC Button added.");
+                }
+                e.target.reset();
+            } catch (err) {
+                alert("Error adding AAC button: " + err.message);
+            }
         }
 
         async function addEvent(e) {
@@ -732,18 +787,30 @@
             }
 
             const id = "event_" + Date.now();
-            await fetch('/api/memory', {
-                method: 'POST',
-                headers:{'Content-Type':'application/json'},
-                body: JSON.stringify({id: id, type: 'event', content: desc, schedule: sched})
-            });
-            e.target.reset();
-            alert("Appointment added.");
+            try {
+                const response = await fetch('/api/memory', {
+                    method: 'POST',
+                    headers:{'Content-Type':'application/json'},
+                    body: JSON.stringify({id: id, type: 'event', content: desc, schedule: sched})
+                });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                const data = await response.json();
+                if (data.status === 'pending_approval') {
+                    alert("Event submitted for caregiver approval.");
+                } else {
+                    alert("Appointment added.");
+                }
+                e.target.reset();
+            } catch (err) {
+                alert("Error adding event: " + err.message);
+            }
         }
 
         async function loadPending() {
             try {
-                const response = await fetch('/api/pending');
+                const response = await fetch('/api/pending?patient_id=' + PATIENT_ID);
                 const data = await response.json();
                 const list = document.getElementById('pending-list');
                 list.textContent = '';
@@ -774,23 +841,39 @@
 
         async function approvePending(id) {
             const content = document.getElementById(`pending-input-${id}`).value;
-            await fetch(`/api/pending/${id}/approve`, {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({content: content})
-            });
-            loadPending();
-            loadTimeline();
+            try {
+                const response = await fetch(`/api/pending/${id}/approve`, {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({content: content})
+                });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                alert("Pending item approved.");
+                loadPending();
+                loadTimeline();
+            } catch (err) {
+                alert("Error approving pending item: " + err.message);
+            }
         }
 
         async function discardPending(id) {
-            await fetch(`/api/memory/${id}`, { method: 'DELETE' });
-            loadPending();
+            try {
+                const response = await fetch(`/api/memory/${id}`, { method: 'DELETE' });
+                if (!response.ok) {
+                    throw new Error(`Server responded with ${response.status}`);
+                }
+                alert("Pending item discarded.");
+                loadPending();
+            } catch (err) {
+                alert("Error discarding pending item: " + err.message);
+            }
         }
 
         async function loadTimeline() {
             try {
-                const response = await fetch('/api/timeline');
+                const response = await fetch('/api/timeline?patient_id=' + PATIENT_ID);
                 const data = await response.json();
                 const list = document.getElementById('timeline-list');
                 list.textContent = '';
@@ -811,21 +894,261 @@
             } catch(e) { console.error(e); }
         }
 
-        document.addEventListener('DOMContentLoaded', () => {
-            document.getElementById('lang-selector').value = currentLang;
-            if (!('webkitSpeechRecognition' in window)) {
-                document.getElementById('dictation-unsupported-msg').style.display = 'block';
-                document.getElementById('btn-record').disabled = true;
+        // Caregiver Voice Input
+        let caregiverPendingTranscript = null;
+        let caregiverPendingFacts = null;
+
+        const caregiverSpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let caregiverRecognition = null;
+        let caregiverIsProcessing = false;
+
+        if (caregiverSpeechRecognition) {
+            caregiverRecognition = new caregiverSpeechRecognition();
+            caregiverRecognition.lang = 'en-US';
+            caregiverRecognition.interimResults = false;
+            caregiverRecognition.continuous = false;
+
+            caregiverRecognition.onresult = async (event) => {
+                if (caregiverIsProcessing) return;
+                const result = event.results[event.results.length - 1];
+                if (!result.isFinal) return;
+
+                caregiverIsProcessing = true;
+                caregiverRecognition.stop();
+
+                const speechResult = result[0].transcript;
+                if (!speechResult || speechResult.trim() === '') {
+                    alert("I didn't catch anything. Please try again.");
+                    caregiverIsProcessing = false;
+                    return;
+                }
+
+                showCaregiverTranscriptPreview(speechResult);
+            };
+
+            caregiverRecognition.onerror = (event) => {
+                if (event.error === 'aborted') return;
+                alert("Didn't catch that, please try again.");
+                caregiverIsProcessing = false;
+            };
+
+            caregiverRecognition.onend = () => {
+                if (!caregiverIsProcessing) {
+                    const btn = document.getElementById('btn-caregiver-voice');
+                    if (btn) btn.style.background = '';
+                }
+            };
+        }
+
+        function startCaregiverVoice() {
+            if (!caregiverRecognition) {
+                alert("Speech recognition not supported in this browser.");
+                return;
             }
-            initMemoryGraph('graph-container', 10000);
+            if (caregiverIsProcessing) return;
+            try {
+                caregiverRecognition.start();
+            } catch (e) {
+                alert("Could not start speech recognition.");
+            }
+        }
+
+        function showCaregiverTranscriptPreview(text) {
+            caregiverPendingTranscript = text;
+            const textarea = document.getElementById('caregiver-preview-text');
+            textarea.value = text;
+            textarea.focus();
+            document.getElementById('caregiver-preview-overlay').style.display = 'block';
+        }
+
+        function useCaregiverTranscript() {
+            if (!caregiverPendingTranscript) return;
+            const textarea = document.getElementById('caregiver-preview-text');
+            const text = textarea.value.trim();
+            if (!text) {
+                alert("Empty text. Please say something or cancel.");
+                return;
+            }
+            hideCaregiverPreview();
+            caregiverPendingTranscript = null;
+            submitCaregiverVoiceForFacts(text);
+        }
+
+        function cancelCaregiverPreview() {
+            document.getElementById('caregiver-preview-overlay').style.display = 'none';
+            caregiverPendingTranscript = null;
+            caregiverPendingFacts = null;
+        }
+
+        function hideCaregiverPreview() {
+            document.getElementById('caregiver-preview-overlay').style.display = 'none';
+        }
+
+        async function submitCaregiverVoiceForFacts(text) {
+            try {
+                const response = await fetch('/api/voice/preview', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ text: text })
+                });
+                if (!response.ok) throw new Error("API Error");
+                const data = await response.json();
+                const facts = data.facts || [];
+
+                if (facts.length === 0) {
+                    alert("I didn't catch any clear facts from that. Could you say it differently?");
+                    caregiverIsProcessing = false;
+                    return;
+                }
+
+                const factList = document.getElementById('caregiver-fact-list');
+                factList.textContent = '';
+                facts.forEach((fact, idx) => {
+                    const item = document.createElement('div');
+                    item.style.marginBottom = '10px';
+                    item.style.padding = '10px';
+                    item.style.background = 'var(--surface)';
+                    item.style.border = '1px solid var(--border)';
+                    item.style.borderRadius = '8px';
+                    const typeChip = document.createElement('span');
+                    typeChip.style.fontSize = '0.75rem';
+                    typeChip.style.fontWeight = 'bold';
+                    typeChip.style.color = 'var(--primary)';
+                    typeChip.style.marginRight = '8px';
+                    typeChip.textContent = fact.type;
+                    const labelSpan = document.createElement('span');
+                    labelSpan.style.fontWeight = '500';
+                    labelSpan.textContent = fact.label;
+                    const descSpan = document.createElement('span');
+                    descSpan.style.display = 'block';
+                    descSpan.style.fontSize = '0.9rem';
+                    descSpan.style.color = 'var(--text-muted)';
+                    descSpan.textContent = fact.description;
+                    if (fact.when) {
+                        const whenSpan = document.createElement('span');
+                        whenSpan.style.display = 'block';
+                        whenSpan.style.fontSize = '0.85rem';
+                        whenSpan.style.color = 'var(--text-muted)';
+                        whenSpan.textContent = "When: " + fact.when;
+                        descSpan.appendChild(whenSpan);
+                    }
+                    item.appendChild(typeChip);
+                    item.appendChild(labelSpan);
+                    item.appendChild(descSpan);
+                    factList.appendChild(item);
+                });
+
+                caregiverPendingFacts = facts;
+                document.getElementById('caregiver-fact-preview-overlay').style.display = 'block';
+            } catch (err) {
+                alert("I couldn't understand that clearly. Please try again.");
+                caregiverIsProcessing = false;
+            }
+        }
+
+        async function confirmCaregiverFacts() {
+            if (!caregiverPendingFacts || caregiverPendingFacts.length === 0) return;
+            try {
+                const response = await fetch('/api/voice/confirm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ facts: caregiverPendingFacts })
+                });
+                if (!response.ok) throw new Error("API Error");
+                const data = await response.json();
+                document.getElementById('caregiver-fact-preview-overlay').style.display = 'none';
+                caregiverPendingFacts = null;
+                alert("Saved " + data.created + " fact(s) to memory for caregiver review.");
+                loadMemoryAndAlerts();
+                loadMeds();
+                loadPending();
+            } catch (err) {
+                alert("Could not save. Please try again.");
+            }
+        }
+
+        function cancelCaregiverFacts() {
+            document.getElementById('caregiver-fact-preview-overlay').style.display = 'none';
+            caregiverPendingFacts = null;
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            const PATIENT_ID = "{{ patient_id }}";
+            // Graph initialization flag (initialized once)
+            let graphInitialized = false;
+
+            // Navigation: show/hide sections
+            const navItems = document.querySelectorAll('.nav-item');
+            const sections = document.querySelectorAll('.page-section');
             
-            // Reorder cards initially according to requested order
-            const container = document.getElementById('cards-container');
-            const order = ['card-alerts', 'card-meds', 'card-graph', 'card-stories', 'card-timeline', 'card-report', 'card-onboarding', 'card-settings'];
-            order.forEach(id => {
-                const el = document.getElementById(id);
-                if(el) container.appendChild(el);
+            function showSection(sectionId) {
+                sections.forEach(sec => {
+                    sec.classList.remove('active');
+                    sec.style.display = 'none';
+                });
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                const target = document.getElementById('section-' + sectionId);
+                if (target) {
+                    target.classList.add('active');
+                    target.style.display = 'block';
+                }
+                
+                const activeItem = document.querySelector('.nav-item[data-section="' + sectionId + '"]');
+                if (activeItem) {
+                    activeItem.classList.add('active');
+                }
+                
+                // Update page title
+                const titles = {
+                    overview: 'Overview',
+                    meds: 'Medicines',
+                    alerts: 'Alerts',
+                    stories: 'Pending Approvals',
+                    timeline: 'People & Routine',
+                    graph: 'Memory Graph',
+                    report: 'Reports',
+                    settings: 'Settings'
+                };
+                const titleEl = document.getElementById('page-title');
+                if (titleEl && titles[sectionId]) {
+                    titleEl.textContent = titles[sectionId];
+                }
+                
+                // If navigating to graph, initialize 3D graph once
+                if (sectionId === 'graph' && typeof initMemoryGraph === 'function' && !graphInitialized) {
+                    setTimeout(() => {
+                        const graphContainer = document.getElementById('graph-container');
+                        if (graphContainer) {
+                            graphContainer.style.display = 'block';
+                        }
+                        initMemoryGraph('graph-container', 10000);
+                        graphInitialized = true;
+                    }, 50);
+                }
+            }
+            
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    const sectionId = item.getAttribute('data-section');
+                    showSection(sectionId);
+                    
+                    // Close sidebar on mobile
+                    const sidebar = document.getElementById('sidebar');
+                    if (sidebar) sidebar.classList.remove('open');
+                });
             });
+            
+            // Sidebar toggle for mobile
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.getElementById('sidebar');
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('open');
+                });
+            }
             
             loadSummary();
             loadMemoryAndAlerts();
@@ -837,7 +1160,42 @@
             setInterval(loadMeds, 30000);
             setInterval(loadPending, 10000);
             setInterval(loadTimeline, 30000);
+            
+            // Show overview by default
+            showSection('overview');
         });
     </script>
+
+    <!-- Caregiver Voice Transcript Preview Overlay -->
+    <div id="caregiver-preview-overlay" class="preview-overlay">
+        <div class="preview-card">
+            <div class="preview-header">
+                <span style="font-size: 24px;">🎙️</span>
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.25rem;">Review what you said</h3>
+            </div>
+            <p class="preview-hint">Review and edit your transcript before sending:</p>
+            <textarea id="caregiver-preview-text" class="form-control" rows="3"></textarea>
+            <div class="preview-actions">
+                <button id="btn-caregiver-preview-cancel" class="btn" onclick="cancelCaregiverPreview()">Cancel</button>
+                <button id="btn-caregiver-preview-use" class="btn btn-primary" onclick="useCaregiverTranscript()">Use this text</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Caregiver Voice Fact Preview Overlay -->
+    <div id="caregiver-fact-preview-overlay" class="preview-overlay">
+        <div class="preview-card">
+            <div class="preview-header">
+                <span style="font-size: 24px;">📋</span>
+                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.25rem;">Review what I heard</h3>
+            </div>
+            <p class="preview-hint">I found these facts. Review and confirm before saving:</p>
+            <div id="caregiver-fact-list" style="margin-bottom: 16px;"></div>
+            <div class="preview-actions">
+                <button id="btn-caregiver-fact-cancel" class="btn" onclick="cancelCaregiverFacts()">Cancel</button>
+                <button id="btn-caregiver-fact-confirm" class="btn btn-primary" onclick="confirmCaregiverFacts()">Save to memory</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

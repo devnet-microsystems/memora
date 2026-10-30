@@ -11,25 +11,25 @@ def seed():
     print("Seeding Memory Graph for Demo...")
     
     nodes = [
-        {"id": "maria_utente", "type": "person", "content": "Maria, 78 anni, abita a Milano, diagnosticata con MCI lieve."},
-        {"id": "luca_figlio", "type": "person", "content": "Luca, figlio di Maria, vive a 20 minuti di distanza, numero di emergenza."},
-        {"id": "giulia_badante", "type": "person", "content": "Giulia, passa il martedì e giovedì mattina per dare una mano."},
-        {"id": "dr_rossi", "type": "person", "content": "Dottor Rossi, geriatra di Maria, studio in via Roma 12."},
-        {"id": "milano_casa", "type": "place", "content": "Casa di Maria, Via Torino 5, Milano."},
-        {"id": "pillola_pressione", "type": "med", "content": "Pillola per la pressione, da prendere ogni mattina a colazione.", "schedule": "08:00"},
-        {"id": "passeggiata_parco", "type": "habit", "content": "Passeggiata quotidiana al parchetto vicino casa alle 10:30.", "schedule": "10:30"},
-        {"id": "visita_geriatra", "type": "event", "content": "Visita geriatrica dal Dottor Rossi", "schedule": "TUE,THU 10:00"}
+        {"id": "maria_user", "type": "person", "content": "Maria, 78 years old, lives in Milan, diagnosed with mild cognitive impairment."},
+        {"id": "luca_son", "type": "person", "content": "Luca, Maria's son, lives 20 minutes away, emergency contact."},
+        {"id": "giulia_caregiver", "type": "person", "content": "Giulia, comes Tuesday and Thursday mornings to help out."},
+        {"id": "dr_rossi", "type": "person", "content": "Dr. Rossi, Maria's geriatrician, office at via Roma 12."},
+        {"id": "milan_home", "type": "place", "content": "Maria's home, Via Torino 5, Milan."},
+        {"id": "blood_pressure_pill", "type": "med", "content": "Blood pressure pill, to be taken every morning at breakfast.", "schedule": "08:00"},
+        {"id": "park_walk", "type": "habit", "content": "Daily walk to the nearby park at 10:30.", "schedule": "10:30"},
+        {"id": "geriatric_visit", "type": "event", "content": "Geriatric visit with Dr. Rossi", "schedule": "TUE,THU 10:00"}
     ]
     
     edges = [
-        {"source": "maria_utente", "target": "luca_figlio", "relation": "madre_di"},
-        {"source": "luca_figlio", "target": "maria_utente", "relation": "caregiver_primario"},
-        {"source": "maria_utente", "target": "giulia_badante", "relation": "assistita_da"},
-        {"source": "maria_utente", "target": "dr_rossi", "relation": "paziente_di"},
-        {"source": "maria_utente", "target": "milano_casa", "relation": "abita_a"},
-        {"source": "maria_utente", "target": "pillola_pressione", "relation": "assume"},
-        {"source": "maria_utente", "target": "passeggiata_parco", "relation": "abitudine"},
-        {"source": "maria_utente", "target": "visita_geriatra", "relation": "impegno"}
+        {"source": "maria_user", "target": "luca_son", "relation": "mother_of"},
+        {"source": "luca_son", "target": "maria_user", "relation": "primary_caregiver"},
+        {"source": "maria_user", "target": "giulia_caregiver", "relation": "assisted_by"},
+        {"source": "maria_user", "target": "dr_rossi", "relation": "patient_of"},
+        {"source": "maria_user", "target": "milan_home", "relation": "lives_at"},
+        {"source": "maria_user", "target": "blood_pressure_pill", "relation": "takes"},
+        {"source": "maria_user", "target": "park_walk", "relation": "habit"},
+        {"source": "maria_user", "target": "geriatric_visit", "relation": "appointment"}
     ]
 
     # Add Nodes
@@ -53,9 +53,9 @@ def seed():
 
     print("\nSimulating anomaly pattern (repeated question on medication)...")
     questions = [
-        "Ho già preso la pillola per la pressione?",
-        "Mi ricordi se ho preso la pillola per la pressione?",
-        "Devo prendere la pillola per la pressione?"
+        "Did I already take the blood pressure pill?",
+        "Remind me if I took the blood pressure pill?",
+        "Do I need to take the blood pressure pill?"
     ]
     
     for q in questions:

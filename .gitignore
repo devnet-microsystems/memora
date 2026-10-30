@@ -1,4 +1,5 @@
 .env
+.env.local
 *.pem
 __pycache__/
 .venv/
@@ -18,5 +19,16 @@ Archivio*.zip
 strix_runs/
 strix-report-*
 poc_*.py
-.!*
+.*
 *.patch
+
+# Frontend build outputs
+frontend/node_modules/
+frontend/dist/
+
+# Build outputs and backups
+dashboard/static/dist/
+data/*.db.bak*
+*.bak-*
+*.bak
+scripts/demo_assets/

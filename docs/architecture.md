@@ -37,10 +37,10 @@ The `NebiusClient` includes an internal `_redact(text)` step. Before any text is
 - Dates of Birth (`[DOB]`)
 - Fiscal Codes/IDs (`[CF REDACTED]`)
 
-This ensures that while the LLM understands the context (e.g., "The user mentioned their phone number"), the actual sensitive sequence never leaves the local environment.
+This ensures that while the LLM understands the context (e.g., "The user mentioned their phone number"), the actual sensitive sequence is redacted before being sent to the cloud LLM.
 
 ## Privacy Model (Local vs Cloud)
 Memora enforces strict data sovereignty boundaries:
-- **Local Persistence:** The raw `MemoryGraph` is stored entirely on the local filesystem in a SQLite database (with `SQLCipher` encryption fallback). No unredacted memories are stored in the cloud.
+- **Remote Persistence:** The raw `MemoryGraph` is stored in Turso libSQL (encrypted at rest by Turso). No unredacted memories are sent to the LLM—only redacted prompts.
 - **Stateless Cloud LLM:** The NVIDIA models running on Nebius are treated as stateless functional components. They receive only the specific (and redacted) context retrieved for a single query. They do not hold the user's graph.
 - **Right to be Forgotten:** Through the dashboard or API, caregivers can trigger the `/memory/{node_id}` DELETE endpoint. This instantly expunges the targeted memory and its edges from the local graph, effectively making the system "forget" it forever.

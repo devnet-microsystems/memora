@@ -1,9 +1,9 @@
 {
   "nodes": [
     {
-      "id": "maria_utente",
+      "id": "maria_user",
       "type": "person",
-      "content": "Maria, 78 anni, abita a Milano, diagnosticata con MCI lieve.",
+      "content": "Maria, 78 years old, lives in Milan, diagnosed with mild cognitive impairment.",
       "embedding": [
         0.016331803053617477,
         -0.00649159774184227,
@@ -4104,9 +4104,9 @@
       ]
     },
     {
-      "id": "luca_figlio",
+      "id": "luca_son",
       "type": "person",
-      "content": "Luca, figlio di Maria, vive a 20 minuti di distanza, numero di emergenza.",
+      "content": "Luca, Maria's son, lives 20 minutes away, emergency contact.",
       "embedding": [
         0.023371635004878044,
         0.0001807181688491255,
@@ -8207,9 +8207,9 @@
       ]
     },
     {
-      "id": "giulia_badante",
+      "id": "giulia_caregiver",
       "type": "person",
-      "content": "Giulia, passa il marted\u00ec e gioved\u00ec mattina per dare una mano.",
+      "content": "Giulia, comes Tuesday and Thursday mornings to help out.",
       "embedding": [
         0.006579880602657795,
         -0.007054105866700411,
@@ -12312,7 +12312,7 @@
     {
       "id": "dr_rossi",
       "type": "person",
-      "content": "Dottor Rossi, geriatra di Maria, studio in via Roma 12.",
+      "content": "Dr. Rossi, Maria's geriatrician, office at via Roma 12.",
       "embedding": [
         -0.004870904143899679,
         0.011454005725681782,
@@ -16413,9 +16413,9 @@
       ]
     },
     {
-      "id": "milano_casa",
+      "id": "milan_home",
       "type": "place",
-      "content": "Casa di Maria, Via Torino 5, Milano.",
+      "content": "Maria's home, Via Torino 5, Milan.",
       "embedding": [
         0.018539492040872574,
         0.006863177753984928,
@@ -20516,9 +20516,9 @@
       ]
     },
     {
-      "id": "pillola_pressione",
+      "id": "blood_pressure_pill",
       "type": "med",
-      "content": "Pillola per la pressione, da prendere ogni mattina a colazione.",
+      "content": "Blood pressure pill, to be taken every morning at breakfast.",
       "embedding": [
         -0.008283993229269981,
         -0.003322536824271083,
@@ -24619,9 +24619,9 @@
       ]
     },
     {
-      "id": "passeggiata_parco",
+      "id": "park_walk",
       "type": "habit",
-      "content": "Passeggiata quotidiana al parchetto vicino casa alle 10:30.",
+      "content": "Daily walk to the nearby park at 10:30.",
       "embedding": [
         -0.014813631772994995,
         0.01959412544965744,
@@ -28724,7 +28724,7 @@
     {
       "id": "patient",
       "type": "person",
-      "content": "Maria, 78 anni, vive a Milano, MCI lieve",
+      "content": "Maria, 78 years old, lives in Milan, MCI mild",
       "embedding": [
         0.014722385443747044,
         -7.194392674136907e-05,
@@ -49239,7 +49239,7 @@
     {
       "id": "med_test",
       "type": "med",
-      "content": "Farmaco di test",
+      "content": "Test medication",
       "schedule": "08:00",
       "embedding": [
         0.0130537748336792,
@@ -53343,39 +53343,39 @@
   ],
   "edges": [
     {
-      "source": "maria_utente",
-      "target": "luca_figlio",
-      "relation": "madre_di"
+      "source": "maria_user",
+      "target": "luca_son",
+      "relation": "mother_of"
     },
     {
-      "source": "luca_figlio",
-      "target": "maria_utente",
-      "relation": "caregiver_primario"
+      "source": "luca_son",
+      "target": "maria_user",
+      "relation": "primary_caregiver"
     },
     {
-      "source": "maria_utente",
-      "target": "giulia_badante",
-      "relation": "assistita_da"
+      "source": "maria_user",
+      "target": "giulia_caregiver",
+      "relation": "assisted_by"
     },
     {
-      "source": "maria_utente",
+      "source": "maria_user",
       "target": "dr_rossi",
-      "relation": "paziente_di"
+      "relation": "patient_of"
     },
     {
-      "source": "maria_utente",
-      "target": "milano_casa",
-      "relation": "abita_a"
+      "source": "maria_user",
+      "target": "milan_home",
+      "relation": "lives_at"
     },
     {
-      "source": "maria_utente",
-      "target": "pillola_pressione",
-      "relation": "assume"
+      "source": "maria_user",
+      "target": "blood_pressure_pill",
+      "relation": "takes"
     },
     {
-      "source": "maria_utente",
-      "target": "passeggiata_parco",
-      "relation": "abitudine"
+      "source": "maria_user",
+      "target": "park_walk",
+      "relation": "habit"
     }
   ]
 }

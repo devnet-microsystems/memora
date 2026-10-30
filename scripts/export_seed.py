@@ -13,16 +13,16 @@ def export_seed():
     client = NebiusClient()
     
     nodes = [
-        {"id": "luca_figlio", "type": "person", "content": "Luca, figlio di Maria, vive a 20 minuti di distanza, numero di emergenza."},
-        {"id": "giulia_badante", "type": "person", "content": "Giulia, passa il martedì e giovedì mattina per dare una mano."},
-        {"id": "dr_rossi", "type": "person", "content": "Dottor Rossi, geriatra di Maria, studio in via Roma 12."},
-        {"id": "milano_casa", "type": "place", "content": "Casa di Maria, Via Torino 5, Milano."},
-        {"id": "pillola_pressione", "type": "med", "content": "Pillola per la pressione, da prendere ogni mattina a colazione.", "schedule": "08:00"},
-        {"id": "passeggiata_parco", "type": "habit", "content": "Passeggiata quotidiana al parchetto vicino casa alle 10:30.", "schedule": "10:30"},
-        {"id": "visita_geriatra", "type": "event", "content": "Visita geriatrica dal Dottor Rossi", "schedule": "TUE,THU 10:00"},
+        {"id": "luca_son", "type": "person", "content": "Luca, Maria's son, lives 20 minutes away, emergency contact."},
+        {"id": "giulia_caregiver", "type": "person", "content": "Giulia, comes Tuesday and Thursday mornings to help out."},
+        {"id": "dr_rossi", "type": "person", "content": "Dr. Rossi, Maria's geriatrician, office at via Roma 12."},
+        {"id": "milan_home", "type": "place", "content": "Maria's home, Via Torino 5, Milan."},
+        {"id": "blood_pressure_pill", "type": "med", "content": "Blood pressure pill, to be taken every morning at breakfast.", "schedule": "08:00"},
+        {"id": "park_walk", "type": "habit", "content": "Daily walk to the nearby park at 10:30.", "schedule": "10:30"},
+        {"id": "geriatric_visit", "type": "event", "content": "Geriatric visit with Dr. Rossi", "schedule": "TUE,THU 10:00"},
         
         # Nodi aggiuntivi richiesti
-        {"id": "patient", "type": "person", "content": "Maria, 78 anni, vive a Milano, MCI lieve", "meta": {"name": "Maria"}},
+        {"id": "patient", "type": "person", "content": "Maria, 78 years old, lives in Milan, MCI mild", "meta": {"name": "Maria"}},
         {"id": "caa_thirsty", "type": "caa_button", "content": "💧 I'm thirsty"},
         {"id": "caa_medicine", "type": "caa_button", "content": "💊 Medicine?"},
         {"id": "caa_bathroom", "type": "caa_button", "content": "🚽 Bathroom"},
@@ -30,14 +30,14 @@ def export_seed():
     ]
     
     edges = [
-        {"source": "patient", "target": "luca_figlio", "relation": "madre_di"},
-        {"source": "luca_figlio", "target": "patient", "relation": "caregiver_primario"},
-        {"source": "patient", "target": "giulia_badante", "relation": "assistita_da"},
-        {"source": "patient", "target": "dr_rossi", "relation": "paziente_di"},
-        {"source": "patient", "target": "milano_casa", "relation": "abita_a"},
-        {"source": "patient", "target": "pillola_pressione", "relation": "assume"},
-        {"source": "patient", "target": "passeggiata_parco", "relation": "abitudine"},
-        {"source": "patient", "target": "visita_geriatra", "relation": "impegno"}
+        {"source": "patient", "target": "luca_son", "relation": "mother_of"},
+        {"source": "luca_son", "target": "patient", "relation": "primary_caregiver"},
+        {"source": "patient", "target": "giulia_caregiver", "relation": "assisted_by"},
+        {"source": "patient", "target": "dr_rossi", "relation": "patient_of"},
+        {"source": "patient", "target": "milan_home", "relation": "lives_at"},
+        {"source": "patient", "target": "blood_pressure_pill", "relation": "takes"},
+        {"source": "patient", "target": "park_walk", "relation": "habit"},
+        {"source": "patient", "target": "geriatric_visit", "relation": "appointment"}
     ]
     
     for n in nodes:

@@ -3,7 +3,7 @@
 ## Track: Personal AI
 
 ## One-Line Pitch
-**Memora is a private, persistent AI companion for people with Mild Cognitive Impairment (MCI) and their caregivers—built on NVIDIA Nemotron models via Nebius Token Factory, with local encrypted memory, PII redaction, and Tavily-grounded local intelligence.**
+**Memora is a private, persistent AI companion for people with Mild Cognitive Impairment (MCI) and their caregivers—built on NVIDIA Nemotron models via Nebius Token Factory, with local SQLite memory, PII redaction, and Tavily-grounded local intelligence.**
 
 ---
 
@@ -17,7 +17,7 @@ Memora provides a **dual-interface system**:
 - **Patient view** (`/patient`): Conversational chat, AAC visual buttons for aphasia, instant SOS button
 - **Caregiver dashboard** (`/caregiver`): Live memory graph (vis.js), medication adherence, anomaly alerts, SOS acknowledgment
 
-All backed by a **local, encrypted Knowledge Graph** (MemoryGraph) that never leaves the device unredacted.
+All backed by a **persistent Knowledge Graph** (MemoryGraph) stored in local SQLite (`data/memora.db`) that redacts PII before any cloud interaction.
 
 ---
 
@@ -31,10 +31,10 @@ FastAPI Backend (src/main.py)
     │
     ├──► MemoraAgent (src/agent.py) — Custom deterministic loop
     │       │
-    │       ├──► MemoryGraph (src/memory.py) — NetworkX + SQLCipher
+    │       ├──► MemoryGraph (src/memory.py) — NetworkX + local SQLite (`data/memora.db`)
     │       │       ├── Nodes: id, type, content, timestamp, embedding
     │       │       ├── Edges: typed relationships
-    │       │       ├── Persistence: Encrypted SQLite (sqlcipher3)
+    │       │       ├── Persistence: local SQLite (`data/memora.db`)
     │       │       └── Right to be Forgotten: DELETE cascade
     │       │
     │       ├──► NebiusClient (src/nebius_client.py) — OpenAI SDK + Nebius Token Factory
@@ -65,7 +65,7 @@ Flask Dashboard (dashboard/app.py) — Caregiver UI
 | Requirement | NemoClaw/OpenShell | Memora Custom Loop |
 |-------------|-------------------|-------------------|
 | Vulnerable users (MCI) | General autonomous agents | Rigid guardrails: one question, no diagnosis, calm tone |
-| Structural privacy | Guardrail layers | PII redacted **before** cloud; SQLCipher local; HITL writes |
+| Structural privacy | Guardrail layers | PII redacted **before** cloud; local SQLite; HITL writes |
 | Deterministic safety | LLM-based reasoning | Cosine similarity thresholds on rolling windows |
 | Latency predictability | Variable skill chains | Explicit model routing (Nano/Super/Ultra) |
 
@@ -92,7 +92,7 @@ Flask Dashboard (dashboard/app.py) — Caregiver UI
 ---
 
 ## Persistent MemoryGraph (Privacy by Design)
-- **Storage**: NetworkX DiGraph + SQLCipher-encrypted SQLite
+- **Storage**: NetworkX DiGraph + local SQLite (`data/memora.db`)
 - **Schema**: Nodes (id, type, content, timestamp, embedding, schedule, meta) + Edges (source, target, relation)
 - **Node types**: person, place, event, habit, med, preference, condition, caa_button, alert, flag, interaction, pending
 - **Right to be Forgotten**: `DELETE /memory/{id}` removes node + all edges from graph & DB
@@ -156,8 +156,8 @@ elif "guardia medica" in user_input:
 ## Test Results (Local Verification)
 ```
 $ pytest --cov=src --cov-report=term-missing
-========================= 67 passed, 2 warnings in 6.19s =========================
-Coverage: 75% (src/), 87% (agent), 84% (memory), 66% (nebius_client)
+========================= 18 targeted tests passed (tests/test_agent.py, tests/test_schedule.py) =========================
+No full-suite coverage measurement established.
 ```
 
 All tests mocked — no real API calls required. Tests cover:
@@ -183,7 +183,7 @@ All tests mocked — no real API calls required. Tests cover:
 ---
 
 ## Deployment
-- **Backend**: Fly.io (`memora-y2ebcg.fly.dev/docs`) — FastAPI + Uvicorn
+- **Backend**: Render (`memora-backend-b0ks.onrender.com`) — FastAPI + Uvicorn
 - **Dashboard**: Render (`memora-ht5c.onrender.com`) — Flask + Gunicorn
 - **Nightly Job**: `python -m src.jobs.nightly` — report generation, cleanup
 
@@ -198,9 +198,9 @@ All tests mocked — no real API calls required. Tests cover:
 
 ## Team
 - **Backend Engineer**: FastAPI, Nebius Token Factory, Nemotron routing
-- **Memory Architect**: NetworkX, SQLCipher, embeddings, privacy
+- **Memory Architect**: NetworkX, Turso libSQL, embeddings, privacy
 - **Frontend Developer**: Flask, Bootstrap 5, vis.js, caregiver UX
-- **QA Tester**: pytest, 67 tests, 75% coverage, mocked integrations
+- **QA Tester**: pytest, targeted tests passed, mocked integrations
 
 ---
 

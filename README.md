@@ -4,7 +4,7 @@
 
 **Track:** Personal AI (Nebius x NVIDIA Global AI Hackathon)
 
-**Live demo:** [memora-ht5c.onrender.com](https://memora-ht5c.onrender.com/) (dashboard) · [API docs](https://memora-y2ebcg.fly.dev/docs)  
+**Live demo:** [memora-ht5c.onrender.com](https://memora-ht5c.onrender.com/) (dashboard) · [API docs](https://memora-backend-b0ks.onrender.com/docs)  
 **Video:** _to be added before submission_
 
 ## Test in 60 seconds
@@ -45,7 +45,7 @@ API (FastAPI) ───────► Dashboard (Flask) -> Caregiver view
   ▼
 Agent (Core Logic)
   │
-  ├──► MemoryGraph (Turso libSQL, encrypted at rest) ──► PII Redaction
+  ├──► MemoryGraph (NetworkX + local SQLite, data/memora.db) ──► PII Redaction
   │
   ├──► Nebius Token Factory (NVIDIA Nemotron Models)
   │
@@ -57,7 +57,7 @@ While the NVIDIA ecosystem offers powerful generalized frameworks like **[NemoCl
 
 The reasons for this deliberate choice are:
 1. **Vulnerable User Base (MCI):** Mild Cognitive Impairment patients require a highly reactive, predictable, and rigidly scoped conversational partner—not an "always-on" autonomous agent that might take unpredictable actions in the background. Our custom loop enforces strict, hard-coded guardrails at the prompt and execution level (e.g., "ask only one question at a time", "never diagnose").
-2. **Structural vs. General Guardrails:** Instead of relying on general-purpose guardrail layers, Memora's safety is enforced at the data architecture level. PII is redacted *before* hitting the LLMs, and the "right to be forgotten" is built directly into the persistent `MemoryGraph` (stored in Turso, encrypted at rest, key managed by Turso).
+2. **Structural vs. General Guardrails:** Instead of relying on general-purpose guardrail layers, Memora's safety is enforced at the data architecture level. PII is redacted *before* hitting the LLMs, and the "right to be forgotten" is built directly into the persistent `MemoryGraph` (stored locally in SQLite (`data/memora.db`), key managed locally).
 3. **Deterministic Anomaly Detection:** Rather than relying on autonomous reasoning to detect anomalies, Memora uses strict cosine similarity thresholds over rolling time windows to detect repetitive confusion. This ensures a 100% deterministic trigger for caregiver notifications.
 
 ## Wired Features
@@ -108,7 +108,7 @@ python -m src.jobs.nightly
 ```bash
 pytest --cov=src --cov-report=term-missing
 ```
-**Results (measured):** 67 tests passed, 75% line coverage of `src/`.
+**Results (measured):** 18 targeted tests passed in `tests/test_agent.py` and `tests/test_schedule.py`. No full-suite count or coverage measurement has been established.
 
 ## How We Use Nebius Token Factory
 Nebius provides the OpenAI-compatible runtime that powers Memora's intelligence. By setting the `base_url` to `https://api.tokenfactory.nebius.com/v1/`, Memora leverages high-performance inference endpoints securely and reliably, using `tenacity` for resilient retry logic.
