@@ -4,7 +4,12 @@ services:
   - type: web
     name: memora-dashboard
     env: python
-    buildCommand: "pip install -r requirements.txt"
+    buildCommand: |
+      pip install -r requirements.txt
+      # Install Node.js for React/Vite frontend build (no root required)
+      curl -fsSL https://nodejs.org/dist/v18.18.0/node-v18.18.0-linux-x64.tar.xz | tar -xJ -C /tmp
+      export PATH=/tmp/node-v18.18.0-linux-x64/bin:$PATH
+      cd frontend && npm ci && npm run build
     startCommand: "gunicorn dashboard.app:app --bind 0.0.0.0:$PORT"
     envVars:
       - key: API_URL

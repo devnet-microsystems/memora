@@ -146,12 +146,23 @@ def add_security_headers(response):
 
 # ---- HTML ROUTES (React SPA served by Flask) ----
 # The React SPA built by Vite is served from dashboard/static/dist/.
-# /caregiver and all non-API routes fall back to the SPA index.html for
-# client-side routing. Legacy pages are preserved as fallback.
+# The build must run before Gunicorn starts; if dist/index.html is missing,
+# Flask raises a clear error instead of silently falling back to legacy templates.
+
+SPA_INDEX = os.path.join(SPA_DIST, "index.html")
+
+def _serve_spa():
+    if not os.path.exists(SPA_INDEX):
+        return jsonify({
+            "error": "Frontend bundle not built. Run 'cd frontend && npm ci && npm run build' before starting the server.",
+            "missing": SPA_INDEX,
+        }), 500
+    return send_from_directory(SPA_DIST, "index.html")
 
 @app.route("/")
 def landing():
-    return render_template("landing.html")
+    # Root opens the React SPA caregiver dashboard (not the legacy landing page)
+    return _serve_spa()
 
 @app.route("/static/dist/<path:filename>")
 def spa_static(filename):
@@ -159,44 +170,19 @@ def spa_static(filename):
 
 @app.route("/caregiver")
 def caregiver():
-    # Serve React SPA index.html; client-side routing handles /caregiver
-    spa_index = os.path.join(SPA_DIST, "index.html")
-    if os.path.exists(spa_index):
-        return send_from_directory(SPA_DIST, "index.html")
-    # Fallback to legacy dashboard if SPA not yet built
-    status = "offline"
-    try:
-        resp = requests.get(f"{API_URL}/health", timeout=2)
-        if resp.status_code == 200: status = "online"
-    except requests.RequestException: pass
-    return render_template("index.html", api_url=API_URL, status=status, patient_id="patient_alex")
+    return _serve_spa()
 
 @app.route("/patient")
 def patient():
-    # Serve React SPA index.html; client-side routing handles /patient (PatientView)
-    spa_index = os.path.join(SPA_DIST, "index.html")
-    if os.path.exists(spa_index):
-        return send_from_directory(SPA_DIST, "index.html")
-    # Fallback to legacy patient page if SPA not yet built
-    return render_template("patient.html", api_url=API_URL)
+    return _serve_spa()
 
 @app.route("/story")
 def story():
-    # Serve React SPA index.html; client-side routing handles /story (Life Book)
-    spa_index = os.path.join(SPA_DIST, "index.html")
-    if os.path.exists(spa_index):
-        return send_from_directory(SPA_DIST, "index.html")
-    # Fallback to legacy story page if SPA not yet built
-    return render_template("story.html")
+    return _serve_spa()
 
 @app.route("/judges")
 def judges():
-    # Serve React SPA index.html; client-side routing handles /judges (JudgesView)
-    spa_index = os.path.join(SPA_DIST, "index.html")
-    if os.path.exists(spa_index):
-        return send_from_directory(SPA_DIST, "index.html")
-    # Fallback to legacy judges page if SPA not yet built
-    return render_template("judges.html")
+    return _serve_spa()
 
 # Catch-all for SPA client-side routes (non-API, non-static)
 @app.route("/<path:subpath>")
@@ -204,10 +190,7 @@ def spa_fallback(subpath):
     # Don't intercept API routes or static assets
     if subpath.startswith("api/") or subpath.startswith("static/"):
         return jsonify({"error": "not found"}), 404
-    spa_index = os.path.join(SPA_DIST, "index.html")
-    if os.path.exists(spa_index):
-        return send_from_directory(SPA_DIST, "index.html")
-    return jsonify({"error": "not found"}), 404
+    return _serve_spa()
 
 # ---- API ROUTES ----
 def _proxy_get(endpoint):
